@@ -320,7 +320,7 @@ function buildSystemPrompt(mode, guideName, guideContent) {
     padding: 12px 0 8px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 16px;
   }
   .chat-inner { width: 100%; }
 
@@ -354,7 +354,7 @@ function buildSystemPrompt(mode, guideName, guideContent) {
   .msg {
     display: flex;
     align-items: flex-end;
-    margin-bottom: 3px;
+    margin-bottom: 0;
     position: relative;
   }
   .msg.ai-msg  { padding: 0 192px 0 192px; }
@@ -1145,23 +1145,6 @@ function addMessage(role, text, imgB64) {
     img.alt = 'Uploaded screenshot';
     bubble.appendChild(img);
   }
-
-  // SVG tail — append inside bubble so it positions relative to it
-  const tailColor = role === 'ai' ? '#e5e5ea' : '#007aff';
-  const tail = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  tail.setAttribute('class', 'bubble-tail');
-  tail.setAttribute('viewBox', '0 0 22 24');
-  tail.setAttribute('width', '22');
-  tail.setAttribute('height', '24');
-  tail.setAttribute('width', '24');
-  tail.setAttribute('height', '22');
-  tail.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  // Wider teardrop: sweeps further left before coming to a point
-  path.setAttribute('d', 'M 18 0 Q 22 8 14 24 Q 8 18 0 22 Q 6 12 18 0 Z');
-  path.setAttribute('fill', tailColor);
-  tail.appendChild(path);
-  bubble.appendChild(tail);
 
   msg.appendChild(av);
   msg.appendChild(bubble);
