@@ -317,12 +317,15 @@ function buildSystemPrompt(mode, guideName, guideContent) {
   .chat-scroll {
     flex: 1;
     overflow-y: auto;
-    padding: 12px 0 8px;
+    padding: 24px 0 16px;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 0;
   }
-  .chat-inner { width: 100%; }
+  .chat-inner {
+    width: 100%;
+    padding-bottom: 20px;
+  }
 
   /* ── Empty state ── */
   .empty-state {
