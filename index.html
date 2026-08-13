@@ -355,59 +355,83 @@ function buildSystemPrompt(mode, guideName, guideContent) {
     display: flex;
     align-items: flex-end;
     margin-bottom: 3px;
-    padding: 0 16px;
+    position: relative;
   }
-  .msg.user { flex-direction: row-reverse; }
+  .msg.ai-msg  { padding: 0 192px 0 192px; }
+  .msg.user-msg { padding: 0 192px 0 192px; flex-direction: row-reverse; }
 
-  /* Hide avatars — iOS Messages doesn't show them in 1:1 chats */
+  /* Hide avatars */
   .avatar { display: none; }
+
+  /* Bubble wrapper — needed so SVG tail sits outside the bubble */
+  .bubble-wrap {
+    position: relative;
+    display: inline-flex;
+    max-width: 75%;
+  }
 
   /* Bubble base */
   .bubble {
-    max-width: 82%;
     padding: 10px 14px;
     font-size: 17px;
     line-height: 1.35;
-    position: relative;
     word-wrap: break-word;
+    position: relative;
+    display: inline-block;
   }
 
-  /* AI bubble — left, light gray, tail bottom-left */
+  /* AI bubble — left, light gray, tail via pseudo-elements */
   .bubble.ai {
     background: #e5e5ea;
     color: #000;
     border-radius: 18px 18px 18px 4px;
-    margin-left: 6px;
   }
   .bubble.ai::before {
     content: '';
     position: absolute;
     bottom: 0;
     left: -8px;
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
     background: #e5e5ea;
-    clip-path: polygon(100% 0, 100% 100%, 0% 100%);
-    border-radius: 0 0 0 6px;
+    border-bottom-right-radius: 50%;
+  }
+  .bubble.ai::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: -26px;
+    width: 26px;
+    height: 20px;
+    background: #fff;
+    border-bottom-right-radius: 14px;
   }
 
-  /* User bubble — right, blue, tail bottom-right */
+  /* User bubble — right, blue, tail via pseudo-elements */
   .bubble.user {
     background: #007aff;
     color: #fff;
     border-radius: 18px 18px 4px 18px;
-    margin-right: 6px;
+  }
+  .bubble.user::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: -8px;
+    width: 20px;
+    height: 20px;
+    background: #007aff;
+    border-bottom-left-radius: 50%;
   }
   .bubble.user::after {
     content: '';
     position: absolute;
     bottom: 0;
-    right: -8px;
-    width: 16px;
-    height: 16px;
-    background: #007aff;
-    clip-path: polygon(0 0, 0 100%, 100% 100%);
-    border-radius: 0 0 6px 0;
+    right: -26px;
+    width: 26px;
+    height: 20px;
+    background: #fff;
+    border-bottom-left-radius: 14px;
   }
 
   .bubble.loading { color: #8e8e93; font-style: normal; }
@@ -1104,7 +1128,7 @@ function addMessage(role, text, imgB64) {
   wrap.className = 'chat-inner';
 
   const msg = document.createElement('div');
-  msg.className = `msg ${role}`;
+  msg.className = `msg ${role} ${role === 'ai' ? 'ai-msg' : 'user-msg'}`;
 
   const av = document.createElement('div');
   av.className = `avatar ${role}`;
@@ -1121,6 +1145,23 @@ function addMessage(role, text, imgB64) {
     img.alt = 'Uploaded screenshot';
     bubble.appendChild(img);
   }
+
+  // SVG tail — append inside bubble so it positions relative to it
+  const tailColor = role === 'ai' ? '#e5e5ea' : '#007aff';
+  const tail = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  tail.setAttribute('class', 'bubble-tail');
+  tail.setAttribute('viewBox', '0 0 22 24');
+  tail.setAttribute('width', '22');
+  tail.setAttribute('height', '24');
+  tail.setAttribute('width', '24');
+  tail.setAttribute('height', '22');
+  tail.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  // Wider teardrop: sweeps further left before coming to a point
+  path.setAttribute('d', 'M 18 0 Q 22 8 14 24 Q 8 18 0 22 Q 6 12 18 0 Z');
+  path.setAttribute('fill', tailColor);
+  tail.appendChild(path);
+  bubble.appendChild(tail);
 
   msg.appendChild(av);
   msg.appendChild(bubble);
