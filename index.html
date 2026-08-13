@@ -105,10 +105,20 @@ If yes — answer.
 
 WHEN YOU HAVE ENOUGH CONTEXT
 
-Lead with the corrected copy. Then give the reason in one or two plain sentences. That's it.
+Your response must follow this exact order, every time:
 
-Example of correct response after clarification:
-"Set up HomeKit. 'Setup' is a noun — the verb is two words. And 'HomeKit' is one word with a capital K, which is Apple's required spelling."
+1. The corrected copy. First. Nothing before it.
+2. The reason, in one or two plain sentences after.
+
+This order is mandatory. Never lead with the problem. Never lead with a list of issues. Never lead with an explanation. The corrected copy is always the first thing the designer reads.
+
+Correct example:
+"Set up HomeKit. 'Setup' is the noun — the verb is two words. 'HomeKit' is always one word with a capital K."
+
+Incorrect example — do not do this:
+"Two issues here. 'Setup' should be 'set up'... Corrected version: Set up HomeKit."
+
+The incorrect version buries the answer. The corrected copy comes first, always.
 
 For nuanced questions where context changes the answer, offer 2–3 options. For each: write the copy, one sentence on what it prioritizes, one sentence on what it trades off. End with one question that moves the decision forward.
 
@@ -1298,17 +1308,28 @@ async function boot() {
 
   // Show a subtle loading state while the guide fetches
   const empty = document.getElementById('empty-state');
-  if (empty) empty.querySelector('p').textContent = 'Loading Apple HIG…';
+  if (empty) empty.querySelector('p').textContent = 'Loading Apple Home guidelines…';
 
   try {
-    // Attempt to load from the /guides folder (works when served)
-    const res = await fetch('./guides/apple-guidelines.md');
-    if (!res.ok) throw new Error('not found');
-    const text = await res.text();
-    applyGuide(text, 'Apple Guidelines');
+    // Fetch both guides in parallel — guidelines + voice and tone
+    const [guidelinesRes, voiceToneRes] = await Promise.all([
+      fetch('./guides/apple-guidelines.md'),
+      fetch('./guides/apple-home-voice-tone.md')
+    ]);
+
+    if (!guidelinesRes.ok) throw new Error('guidelines not found');
+
+    const guidelinesText = await guidelinesRes.text();
+    const voiceToneText = voiceToneRes.ok ? await voiceToneRes.text() : '';
+
+    const combined = voiceToneText
+      ? guidelinesText + '\n\n---\n\n' + voiceToneText
+      : guidelinesText;
+
+    applyGuide(combined, 'Apple Home Guidelines');
   } catch(e) {
-    // Fallback: embedded content works when file is opened directly without a server
-    applyGuide(EMBEDDED_HIG, 'Apple Guidelines');
+    // Fallback: embedded HIG content
+    applyGuide(EMBEDDED_HIG, 'Apple Home Guidelines');
   }
 }
 
