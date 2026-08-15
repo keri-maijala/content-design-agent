@@ -240,3 +240,125 @@ Always "you," "your," "you'll." Never "users" or "customers" in product UI or ma
 ## A note on this guide
 
 This guide is derived from Apple's publicly available marketing pages, not internal Apple documentation. It reflects observable patterns in Apple's product copy — the language Apple uses to describe its Home products to the world. It should be treated as a starting point for content decisions, not a substitute for internal style guidance. Where this guide conflicts with Apple's official HIG or trademark guidelines, defer to those.
+
+---
+
+## Marketing copy — Surface annotations
+
+> **Surface exception [Marketing]:** The following guidance applies specifically to marketing surfaces — webpage headers, hero copy, subheads, and feature descriptions. These surfaces follow different conventions from UI copy and in-product writing. Fragments, sensory language, and product-specific vocabulary are permitted here in ways they are not in UI copy.
+> Derived from: apple.com/home-app, apple.com/homepod-2nd-generation, apple.com/homepod-mini, apple.com/apple-tv-4k
+
+---
+
+### What marketing copy does differently from UI copy
+
+Marketing copy sells the experience before the user has it. UI copy supports the user while they're having it. These are different jobs and they require different registers.
+
+| Dimension | UI copy | Marketing copy |
+|---|---|---|
+| Sentence structure | Complete sentences | Fragments allowed — even preferred |
+| Length | As short as possible | Short, but can breathe |
+| Personality | Minimal — function first | Distinctive — voice forward |
+| Technical terms | Grounded in what user does | Grounded in what user experiences |
+| Tone | Calm, helpful | Confident, sensory, aspirational |
+
+---
+
+### Hero headlines and page titles
+
+Hero headlines are the highest-craft copy on the page. They set the register for everything that follows.
+
+**Conventions:**
+- Short — typically 2–6 words
+- Fragments are not only allowed, they're the default: "Profound sound." "Home. Elevated." "Cinematic in every sense."
+- One idea per headline — never compound
+- No punctuation except a period for emphasis, or none at all
+- Avoid question marks — Apple states, it doesn't ask
+- Never start with "Introducing" — Apple drops straight into the claim
+
+**By product:**
+
+HomePod headlines lead with sound. "Profound sound." "Immersive, high-fidelity audio." "Hits the high notes."
+
+HomePod mini headlines lead with surprise and scale. "Unexpectedly big sound." "Big sound. Small package." The contrast between small and big is the hook.
+
+Apple TV 4K headlines lead with the cinematic experience. "Cinematic in every sense." "The cinematic home theater experience." "Cinematic" is this product's signature word — use it.
+
+Home app headlines lead with control and simplicity. "The foundation for a smarter home." "Everything at a glance." "Your home, your way."
+
+**Examples:**
+
+| ✅ On-brand | ❌ Off-brand |
+|---|---|
+| Profound sound. | Experience the most incredible audio quality. |
+| Unexpectedly big sound. | Small speaker, surprisingly good audio. |
+| Cinematic in every sense. | Watch movies the way they were meant to be seen. |
+| Your home, elevated. | Control all your smart home devices easily. |
+
+---
+
+### Subheads and section headers
+
+Subheads do the work of explaining what the headline announces. They're longer than headlines but still tight.
+
+**Conventions:**
+- Complete sentences are more common here than in headlines
+- Still active voice — subject acts, things happen
+- Ground technical terms in the experience: "beamforming tweeters" is followed immediately by what that means for the listener
+- Second person throughout: "you'll," "your," "you"
+- No more than two sentences — if you need more, break it into a new section
+
+**Examples:**
+- "HomePod mini delivers rich 360-degree audio with deep bass, natural midrange, and crisp high frequencies — all from a speaker that fits in the palm of your hand."
+- "The Home app gives you instant access to your accessories, scenes, and automations — all in one place, across all your Apple devices."
+- "Apple TV 4K brings the movie theater home, with support for Dolby Vision, HDR10+, and Dolby Atmos."
+
+---
+
+### Feature descriptions
+
+Feature descriptions appear below subheads and explain specific capabilities. They're the most functional of the three marketing copy types.
+
+**Conventions:**
+- 2–3 sentences maximum
+- Lead with what the user experiences, not what the technology does
+- Technical specifics follow the experience claim: "Spatial Audio with Dolby Atmos creates a three-dimensional soundscape — placing sounds all around you, above you, and even behind you."
+- Use parallel structure when describing multiple features on the same page
+- Avoid bullet points in premium product marketing — Apple uses flowing copy, not lists, to describe features
+
+**Pattern:** [What it feels like] + [What makes it possible] + [What it means for you]
+
+Example: "HomePod fills the room with rich, detailed sound. Computational audio continuously monitors and adapts to the acoustics of the space. So you always get the best listening experience, wherever you place it."
+
+---
+
+### Vocabulary by product — marketing surfaces
+
+These words and phrases are drawn directly from Apple's marketing pages and represent the approved register for each product.
+
+**HomePod**
+Use: immersive, spatial, enveloping, profound, high-fidelity, fills the room, surrounds you, computational audio, Spatial Audio, beamforming, room sensing, adapts, groundbreaking
+Avoid: loud, powerful, big sound (that's mini's territory), smart speaker (undersells it)
+
+**HomePod mini**
+Use: unexpectedly, surprisingly, big sound, fits anywhere, 360-degree, fills the room, the whole family, add more than one, connected sound system
+Avoid: small (as a limitation), basic, entry-level, simple
+
+**Apple TV 4K**
+Use: cinematic, home theater, true-to-life, award-winning, Dolby Vision, Dolby Atmos, living room, gather, together, discover, experience
+Avoid: streaming box, device, set-top box, plug-in (category descriptors Apple never uses)
+
+**Home app**
+Use: foundation, instant access, at a glance, effortlessly, automatically, all your accessories, compatible, works with, your home
+Avoid: dashboard, control panel, hub (too technical), manage (too corporate)
+
+---
+
+### What marketing copy never does
+
+- Uses "innovative," "revolutionary," or "game-changing" — Apple's confidence doesn't need these words
+- Leads with specs before experience — specs appear after the claim they support
+- Uses passive voice in hero copy — things happen, Apple doesn't say things were made to happen
+- Writes "introducing" as a headline opener
+- Uses exclamation marks in product description copy — excitement comes from the words, not the punctuation
+- Addresses readers as "users" or "customers" — always "you"
