@@ -90,22 +90,98 @@ Never ask more than one question at a time.`;
 
 
 
+
+// ── Tier 2 guide detection ────────────────────────────────────────────────────
+
+// Keywords that clearly signal Apple Home domain — load Tier 2 automatically
+const HOME_KEYWORDS_CLEAR = [
+  'homepod', 'homepod mini', 'mini homepod', 'home pod',
+  'apple tv', 'apple tv 4k', 'appletv',
+  'home app', 'apple home', 'homekit', 'home kit',
+  'smart home', 'home hub', 'accessory', 'accessories',
+  'scene', 'automation', 'home automation',
+  'siri', 'hey siri'
+];
+
+// Keywords that are ambiguous — trigger a clarifying question
+// Only used when NO clear signal is present
+const HOME_KEYWORDS_AMBIGUOUS = [
+  'speaker', 'lights', 'thermostat', 'camera',
+  'doorbell', 'lock', 'plug', 'switch', 'sensor'
+];
+
+/**
+ * Detects whether a user message implies a specific domain.
+ * Returns: 'home' | 'ambiguous' | null
+ *
+ * Handles word-order variations (e.g. "mini home pod", "home pod mini")
+ * and common misspellings or informal references.
+ */
+function detectDomain(message) {
+  const lower = message.toLowerCase()
+    .replace(/[^a-z0-9 ]/g, ' ') // normalize punctuation
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Check clear Home signals — includes word-order variants
+  for (const kw of HOME_KEYWORDS_CLEAR) {
+    if (lower.includes(kw)) return 'home';
+  }
+
+  // Also catch informal variants like "mini home pod", "the mini", "tv 4k"
+  if (/\bmini\b/.test(lower) && /\b(home|pod|apple)\b/.test(lower)) return 'home';
+  if (/\btv\b/.test(lower) && /\b(apple|4k|stream)\b/.test(lower)) return 'home';
+  if (/\bhome\b/.test(lower) && /\b(app|hub|kit|pod|screen|device)\b/.test(lower)) return 'home';
+
+  // Check ambiguous signals — only if no clear signal found
+  for (const kw of HOME_KEYWORDS_AMBIGUOUS) {
+    const regex = new RegExp('\\b' + kw + '\\b', 'i');
+    if (regex.test(message)) return 'ambiguous';
+  }
+
+  return null;
+}
+
 const AUTO_PROMPT = `You are a content design partner having a conversation — not writing a report. No headers. No labels like "CRITIQUE" or "LOOKUP." No bold section titles. Just talk.
 
 CLARIFY ONLY WHEN CONTEXT IS GENUINELY MISSING
 
 Before responding, check: does the question give you enough context to answer precisely?
 
-Context is present when the person has specified: the surface (button, heading, body text, notification, etc.), the product, or the scenario. If any of these are clear from what they wrote, proceed directly to the answer.
+Context is present when the person has specified: the surface (button, heading, body text, notification, webpage, marketing, etc.), the product, or the scenario. If any of these are clear from what they wrote, proceed directly to the answer.
 
 Context is missing when you genuinely cannot give a precise answer without knowing more — for example, if copy is submitted with no indication of where it appears and the rule differs by surface.
 
-Only then ask one clarifying question and stop:
-"Where will this content appear — button, heading, body text, or somewhere else?"
+Only then ask one clarifying question and stop. The question must be about what is genuinely unknown — never about something the designer has already told you.
 
-Nothing else. No answer. No correction. No reasoning alongside the question. Just the question. Wait.
+If the designer named a product (HomePod, HomePod mini, Apple TV, Home app, or any variation) — do not ask which product.
+If the designer named a surface (button, webpage, header, onboarding, marketing) — do not ask which surface.
+Ask only about what is genuinely missing.
+
+Nothing else alongside the question. No answer. No correction. No reasoning. Just the question. Wait.
 
 If context is clear — answer directly. Do not ask.
+
+SURFACES THE GUIDE COVERS
+
+The loaded guide covers both in-product UI copy AND marketing copy for Apple Home products. Do not tell the designer that webpage or marketing copy is outside scope — it is explicitly covered in the guide's marketing annotations section. Surfaces include:
+
+UI surfaces: buttons, labels, navigation, alerts, error states, empty states, onboarding, notifications, tooltips, settings, permission strings.
+
+Marketing surfaces: webpage hero headlines, page headers, subheads, section headings, feature descriptions, product page copy.
+
+If a designer asks for help with a webpage header, hero copy, subhead, or feature description for a Home product — answer using the marketing annotations in the guide.
+
+Before answering a marketing copy request, confirm you know which product it's for. Each Home product has a distinct marketing register:
+- HomePod: premium sound, sensory, audiophile
+- HomePod mini: surprise, accessibility, family, unexpectedly big
+- Apple TV 4K: cinematic, living room, entertainment occasion
+- Home app: control, simplicity, foundation
+
+If the product is named or clearly implied in the current message OR has been established earlier in the conversation — proceed. Do not ask again about something already discussed.
+If the product has genuinely not been mentioned anywhere in the conversation — ask exactly this and stop: "Which Home product is this for — HomePod, HomePod mini, Apple TV 4K, or the Home app?"
+
+When you do have the product and surface, open your response with a brief signal that you're applying marketing conventions. One sentence: "Shifting to marketing register for this one — applying HomePod mini conventions." Then give the copy. Then the brief reason.
 
 WHEN YOU HAVE ENOUGH CONTEXT
 
@@ -114,7 +190,9 @@ Your response must follow this exact order, every time:
 1. The corrected copy. First. Nothing before it.
 2. The reason, in one or two plain sentences after.
 
-This order is mandatory. Never lead with the problem. Never lead with a list of issues. Never lead with an explanation. The corrected copy is always the first thing the designer reads.
+Exception — marketing surfaces only: When the question is about a marketing surface (webpage header, hero copy, subhead, feature description), open with one sentence signaling the register shift before the copy. Example: "Shifting to marketing register — webpage headers follow different conventions than UI copy." Then give the copy. Then the brief reason.
+
+This order is mandatory. Never lead with the problem. Never lead with a list of issues. Never lead with an explanation. The corrected copy is always the first thing the designer reads — except on marketing surfaces where the register signal comes first.
 
 Correct example:
 "Set up HomeKit. 'Setup' is the noun — the verb is two words. 'HomeKit' is always one word with a capital K."
@@ -159,12 +237,23 @@ Available references:
  * @param {string} guideContent — full text content of the loaded guide
  * @returns {string}            — complete system prompt to send to the model
  */
-function buildSystemPrompt(mode, guideName, guideContent) {
-  return [
+function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Conflict) {
+  const parts = [
     BASE_PROMPT,
     `---\n\nSTYLE GUIDE — ${guideName}:\n${guideContent}`,
-    `---\n\n${AUTO_PROMPT}`
-  ].join('\n\n');
+  ];
+
+  if (tier2Content) {
+    parts.push(`---\n\nDOMAIN GUIDE (loaded based on content context):\n${tier2Content}`);
+  }
+
+  if (tier2Conflict) {
+    parts.push(`---\n\nCONFLICT NOTE: A potential conflict was detected between the main style guide and the domain guide. Flag this to the designer and ask them to decide. Log the conflict at the end of your response in this format:\n\nCONFLICT FLAGGED: [brief description of the conflict] — needs resolution between [Tier 1 rule] and [Tier 2 rule].`);
+  }
+
+  parts.push(`---\n\n${AUTO_PROMPT}`);
+
+  return parts.join('\n\n');
 }
 
 </script>
@@ -946,6 +1035,8 @@ let state = {
   apiKey: '',
   guideContent: '',
   guideName: '',
+  tier2Content: '',      // loaded when domain is detected
+  tier2Name: '',         // name of loaded Tier 2 doc
   messages: [],
   pendingImgB64: null,
   guideTab: 'url',
@@ -967,8 +1058,8 @@ const UNIVERSAL_CHIPS = [
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 // Mode is always 'auto' — the agent infers from the question
-function getSystemPrompt() {
-  return buildSystemPrompt('auto', state.guideName, state.guideContent);
+function getSystemPrompt(tier2Content, tier2Conflict) {
+  return buildSystemPrompt('auto', state.guideName, state.guideContent, tier2Content || '', tier2Conflict || false);
 }
 
 // ── Chips ─────────────────────────────────────────────────────────────────────
@@ -1219,6 +1310,36 @@ async function send() {
   state.messages.push({ role: 'user', content: msgContent });
   clearImg();
 
+  // ── Tier 2 domain detection ──────────────────────────────────────────────
+  let tier2Content = state.tier2Content || '';
+  let tier2Conflict = false;
+  let domainDetected = false;
+
+  if (text && typeof detectDomain === 'function') {
+    const domain = detectDomain(text);
+
+    if (domain === 'home' && !state.tier2Content) {
+      // Clear signal — load Home Tier 2 doc silently
+      try {
+        const t2res = await fetch('./guides/apple-home-voice-tone.md');
+        if (t2res.ok) {
+          state.tier2Content = await t2res.text();
+          state.tier2Name = 'Apple Home Voice and Tone';
+          tier2Content = state.tier2Content;
+          domainDetected = true;
+          showToast('Home voice and tone guide loaded');
+        }
+      } catch(e) {}
+    } else if (domain === 'ambiguous' && !state.tier2Content) {
+      // Ambiguous signal — ask which product before loading
+      const clarifyMsg = 'Which Apple Home product is this for — HomePod, HomePod mini, Apple TV, or the Home app? That\'ll help me load the right guidance.';
+      addMessage('ai', clarifyMsg);
+      document.getElementById('send-btn').disabled = false;
+      return;
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────────
+
   const loadBubble = addMessage('ai', '_Thinking…_');
   loadBubble.classList.add('loading');
   document.getElementById('send-btn').disabled = true;
@@ -1232,7 +1353,7 @@ async function send() {
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: provider.headers(state.apiKey),
-      body: JSON.stringify(provider.buildBody(state.messages, getSystemPrompt()))
+      body: JSON.stringify(provider.buildBody(state.messages, getSystemPrompt(tier2Content, tier2Conflict)))
     });
 
     const data = await res.json();
