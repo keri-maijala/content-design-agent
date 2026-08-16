@@ -169,6 +169,26 @@ Add animation cautiously. Use motion effects with purpose and restraint. Custom 
 
 ---
 
+## Formatting
+
+### Link labels
+- Use title case: "Learn More," not "learn more"
+- Never include chevrons or arrows: "Learn More," not "Learn More >"
+- Use specific action labels where possible: "Learn More" is a last resort — prefer "Set Up HomePod" or "View Automations"
+
+### Alert and notification headers
+- Use title case: "Home Hub Not Responding," not "HomeHub not responding"
+- Keep headers short — state what happened, nothing more
+- Never use sentence case for headers
+
+### Capitalization in body copy
+- "home" is lowercase in body copy unless referring to the Apple Home app by name
+  - ✅ "Your home may not behave as expected."
+  - ✅ "Open the Apple Home app."
+  - ❌ "Your Home may not behave as expected."
+
+---
+
 ## Starting and Stopping
 
 - Start instantly. Present useful content immediately.

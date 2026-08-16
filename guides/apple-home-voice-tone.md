@@ -176,6 +176,7 @@ Always "you," "your," "you'll." Never "users" or "customers" in product UI or ma
 | HomePod | One word. Capital H and P. |
 | HomePod mini | Lowercase m. |
 | Apple TV 4K | Exactly as written. Space before 4K. |
+| Home Hub | Two words. Capital H on both. Never "HomeHub." |
 | Siri | Always capitalized. |
 | Spatial Audio | Both words capitalized when referring to Apple's feature. |
 | Matter | Capitalized when referring to the smart home connectivity standard. |
@@ -191,6 +192,7 @@ Always "you," "your," "you'll." Never "users" or "customers" in product UI or ma
 | Home kit | HomeKit |
 | Homepod | HomePod |
 | home app | Home app |
+| HomeHub | Home Hub |
 | action set | scene |
 | service / characteristic | Descriptive names (e.g. "ceiling fan light," "brightness") |
 | Log in / Login | Sign in / Sign-in |
