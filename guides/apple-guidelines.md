@@ -169,26 +169,6 @@ Add animation cautiously. Use motion effects with purpose and restraint. Custom 
 
 ---
 
-## Formatting
-
-### Link labels
-- Use title case: "Learn More," not "learn more"
-- Never include chevrons or arrows: "Learn More," not "Learn More >"
-- Use specific action labels where possible: "Learn More" is a last resort — prefer "Set Up HomePod" or "View Automations"
-
-### Alert and notification headers
-- Use title case: "Home Hub Not Responding," not "HomeHub not responding"
-- Keep headers short — state what happened, nothing more
-- Never use sentence case for headers
-
-### Capitalization in body copy
-- "home" is lowercase in body copy unless referring to the Apple Home app by name
-  - ✅ "Your home may not behave as expected."
-  - ✅ "Open the Apple Home app."
-  - ❌ "Your Home may not behave as expected."
-
----
-
 ## Starting and Stopping
 
 - Start instantly. Present useful content immediately.
@@ -610,3 +590,318 @@ You can customize the location button to match your UI:
 - **ARKit doesn't send data to apps in the Shared Space.** To access ARKit APIs, your app must open a Full Space. Features like Plane Estimation, Scene Reconstruction, Image Anchoring, and Hand Tracking require explicit permission.
 - **User input is private by design.** The system displays hover effects when people look at interactive components — without exposing where they're looking before they tap.
 - **Developer access to device cameras works differently in visionOS.** The back camera provides blank input and is available only as a compatibility convenience. The front camera provides input for spatial Personas only after people grant permission. If your iOS or iPadOS app includes a feature that needs camera access, remove it or replace it with an option for people to import content instead.
+
+---
+
+# Apple Style Guide
+**Source:** Apple Style Guide, June 2026
+
+This section covers editorial and terminology guidelines relevant to UI copy, product naming, and content design. Sections covering print layout, figure captions, developer documentation conventions, and publishing logistics have been omitted.
+
+---
+
+## Voice and Tone
+
+- Use active voice and short sentences.
+- Use "you/your" — not "users" or "customers."
+- No exclamation marks in product copy. OK occasionally in promotional text or dialogue.
+- Contractions are encouraged as part of Apple's informal voice: aren't, can't, didn't, doesn't, you're, it's, we've, here's, let's, that's, there's, what's.
+- Don't form contractions from nouns or proper nouns (avoid "Apple's going to…"; prefer "Apple is going to…").
+- Don't confuse it's (contraction for "it is") with its (possessive pronoun).
+
+---
+
+## Capitalization
+
+Two styles used at Apple:
+- **Sentence-style:** Only the first word and proper nouns are capitalized.
+- **Title-style:** Capitalize the first and last word, nouns, pronouns, verbs, adjectives, adverbs, and conjunctions (except coordinating conjunctions). Capitalize prepositions of five or more letters, and prepositions that are part of a phrasal verb (e.g., Start Up, Turn On, Log In).
+
+**Don't capitalize in title style:**
+- Articles (a, an, the) unless first word or after a colon
+- Coordinating conjunctions (and, but, or, nor, for, yet, so)
+- "to" in infinitives
+- "as" regardless of part of speech
+- Words that always start lowercase (iPad, macOS)
+- Prepositions of four letters or fewer (at, by, for, from, in, into, of, off, on, onto, out, over, to, up, with) — except when part of a phrasal verb
+
+**Exception:** Capitalize the second word in a hyphenated compound (except Built-in and Plug-in): High-Level Events, 64-Bit Addressing.
+
+In general, capitalize the names of onscreen elements exactly as they appear onscreen.
+
+---
+
+## Punctuation
+
+### Commas
+- Use a serial comma before "and" or "or" in a list of three or more items.
+- Use a comma between the day of the month and the year: June 8, 2026.
+- When using the full date, follow the year with a comma: on June 8, 2026, at 10:00 a.m.
+- If giving only the month and year, don't use commas: in June 2026 at WWDC.
+
+### Colons
+- Capitalize the first word after a colon if it begins a complete sentence.
+- Precede every list with a colon, whether the introductory text is a complete thought or partial thought.
+
+### Apostrophes
+- Use the curly apostrophe (Option-Shift-Right Bracket) except in code font and units of measure.
+
+### Dashes
+- **Em dash (—):** Sets off a word or phrase that interrupts or changes direction. Close up with adjacent words (no spaces). Generate with Option-Shift-Hyphen.
+- **En dash (–):** Use between numbers in a range (bits 3–17), in compound adjectives where one element is two words (Grammy Award–winning), and as a minus sign. Generate with Option-Hyphen.
+
+### Ellipsis
+- Use the ellipsis character (Option-Semicolon). Don't include ellipsis when referencing a menu item or button name in text: "Choose File > Print" not "Choose File > Print…"
+
+### Quotation Marks
+- Use curly quotes. Don't use quotation marks around button names that use title-style capitalization. Do use them around button names that use sentence-style capitalization: Click the "Position on screen" button.
+
+---
+
+## Dates and Times
+
+- Use cardinal numbers in dates that include the month: August 12.
+- Use ordinal numbers in dates without the month: the 12th. Use full-size letters, not superscript.
+- Spell out days and months in text. Use numerals for the year except at the start of a sentence.
+- Don't use slashes in dates (not 3/5/22) — American and European usage differ.
+- a.m. and p.m.: note periods, use a space before the abbreviation: 8:30 a.m.
+
+---
+
+## Numbers
+
+- Spell out cardinal numbers one through nine in body text. Use numerals for 10 and above.
+- Use numerals — regardless of size — when expressing numbers as numbers or as units of measure: "the number 4 appears," "up to 5 computers."
+- Spell out ordinal numbers zero through nine: second, third. Use numerals for 10th and above.
+- Always spell out a number that begins a sentence, or rewrite to avoid it.
+- Use numerals for battery life: up to 8 hours of battery life.
+- Fractions: spell out those with a denominator of 10 or lower in body text: one-fifth. Use numerals for others: 1/20.
+- Dimensions: use "by" not "x" — 8.5 by 11 inches. If you use x, use it consistently.
+
+---
+
+## Abbreviations and Acronyms
+
+- Spell out on first occurrence if the audience may be unfamiliar with it. Put the abbreviation in parentheses after the spelled-out form.
+- File types: all caps (JPEG, PDF, MP3). Filename extensions: lowercase (.jpg, .pdf, .mp3).
+- Don't use periods in abbreviations except for nonmetric units of measure and a.m., p.m., and U.S.
+- Don't add an apostrophe before s when forming the plural of an abbreviation: CDs, ISPs.
+- Avoid Latin abbreviations: use "for example" not e.g., "that is" not i.e., "and so on" not etc.
+- Use the article a or an with an abbreviation based on pronunciation: a SAN, an FAQ.
+
+---
+
+## UI Elements and Actions
+
+### Buttons
+- Write button names exactly as they appear onscreen.
+- Buttons with title-style capitalization: no quotation marks — Tap Add to Favorites.
+- Buttons with sentence-style capitalization: use quotation marks — Click the "Position on screen" button.
+- Buttons with all caps or all lowercase onscreen: write in title-style capitalization.
+
+### Menus
+- Use **choose** for menu items, not "select."
+- Format: Choose [Menu] > [Item] > [Submenu item]. Example: Choose Edit > Find > Find Next.
+- A menu item is **in** a menu, not on or under it.
+- Use **item** or **option** for non-command menu items (such as font names in a pop-up menu).
+
+### Checkboxes
+- Don't say "click a checkbox" — it's ambiguous. Say: Select the [Name] checkbox / Deselect the [Name] checkbox.
+- A checkbox is **selected** or **unselected** — not checked/unchecked.
+
+### Pop-up Menus
+- Format: Click the [Name] pop-up menu, and then choose [Option].
+
+### Shortcut Menus
+- Format: Control-click [item], and then choose [Command] from the shortcut menu.
+- In user materials, use "shortcut menu" not "contextual menu." You can reference contextual menu parenthetically on first use.
+
+### Dialogs
+- Use **dialog** not "dialog box."
+- In user materials, don't use the term "sheet" or "popover" — describe what the user must select or do.
+
+### Alerts
+- Use **alert** generically. Avoid "error message" in user materials; use "message," "alert," or "alert message."
+
+---
+
+## Interaction Verbs
+
+| Use | Don't use |
+|---|---|
+| Tap (touch) | Hit, touch (as verb), click (for touch) |
+| Click (mouse/trackpad) | Hit, click on |
+| Press (mechanical button) | Depress, hit |
+| Press and hold (mechanical) | Hold down |
+| Touch and hold (touchscreen) | Long press |
+| Choose (menu items) | Select (for menus) |
+| Select (files, text, checkboxes) | Click (for selection) |
+| Drag | Click and drag, move, put |
+| Enter (text by any method) | Input |
+| Type (pressing keys to produce characters) | — |
+| Turn on / Turn off | Enable / Disable, activate / deactivate |
+| Sign in | Log in |
+| Set up (verb) | Setup (verb) |
+
+- Never use "Click" in touch contexts — use "Tap."
+- Never say "drag your finger" — just say "drag."
+- Don't use "allow" when you can make the reader the subject: "You can create a database" not "FileMaker Pro allows you to create a database."
+- Don't use "let" excessively — restructure to focus on what the user does.
+- Use "appear" not "display" when items become visible: "The dialog appears" not "The dialog displays."
+
+---
+
+## Inclusive Language
+
+- Don't use "man" or compound words including man to refer to people in general: use "staff," "workforce," "work hours," "artistry," "unstaffed."
+- Don't use blacklist/whitelist — use deny list/allow list, reject list/accept list, or similar.
+- Don't use master/slave — use primary/secondary, primary/replica, host/client, or active/standby.
+- Don't use black box/white box — use closed/open, opaque/transparent, or other alternatives.
+- Don't use black hat/white hat hacker — use malicious/unethical hacker or approved/ethical hacker.
+- Don't use "grandfathered" — use "legacy," "exempt," "preexisting," or rewrite with "you can keep."
+- Don't use "dummy" for placeholder content — use placeholder, sample, test, or stub.
+- Don't use "kill" to stop an app or process — use force quit, terminate, end, stop, halt, or cancel.
+- Don't use "abort" in user materials — use exit, stop, or quit as appropriate.
+- Don't use "sanity check" — use review, verify, or validate.
+
+### Disability Language
+- Use person-first or identity-first language as appropriate. Ask individuals their preference.
+- Use "blind" or "low vision" not "visually impaired."
+- Use "deaf," "hard of hearing," or "deaf or hard of hearing" not "hearing impaired."
+- Capitalize "Deaf" and "Deafblind" when referring to cultural identity.
+- Use "disability" not "impairment" in general references.
+- Don't use "differently abled," "special needs," or "special abilities."
+
+---
+
+## Apple Product Names and Terminology
+
+### General Rules
+- Don't abbreviate any Apple product or service name.
+- Don't use Apple product names in the plural or possessive form: "Mac computers" not "Macs"; "your Mac computer's screen" not "your Mac's screen."
+- In text, don't use the Apple logo symbol (⌘) in place of the word Apple or as part of a product name.
+
+### Specific Products
+
+**Apple Account** (formerly Apple ID)
+- People sign in **to** their Apple Account — not "with."
+- Don't use "iCloud account," "iTunes Store account," or "App Store account."
+
+**Apple TV 4K**
+- Space before 4K. Don't use "Apple TV" alone to refer to the hardware device.
+- Don't abbreviate as ATV 4K.
+
+**HomePod**
+- One word, capital H and P. If referring to more than one, use "HomePod speakers."
+- **HomePod mini** — lowercase m.
+
+**HomeKit** — one word, capital H and K.
+
+**AirPods**
+- Don't use "the" with AirPods in general references. OK to use "your AirPods."
+- Use numbers to refer to models: AirPods Pro 2, not AirPods Pro (2nd generation).
+- Avoid singular "AirPod" — rewrite to avoid.
+
+**Apple Watch**
+- Don't use "the" with Apple Watch in general references.
+- Always use full model names: Apple Watch Ultra, not Ultra.
+- Can use "watch" (lowercase) when context is clear; never "Watch."
+
+**iPhone / iPad**
+- Don't use "the" in general references.
+- Don't use "phone" as shorthand for iPhone.
+- Don't use iPad in the plural form; use "iPad devices."
+
+**Mac**
+- Don't use "the" with Mac in general references.
+- Don't use "machine," "CPU," or "PC" to refer to a Mac.
+- Use "Mac computers" not "Macs."
+
+**Apple Intelligence** — Don't abbreviate as AI.
+
+**Apple Vision Pro**
+- Always use full name. Don't call it a headset.
+- Users put on and take off Apple Vision Pro; they wear it.
+
+**macOS / iOS / iPadOS / tvOS / visionOS / watchOS**
+- No article needed: "In macOS…" not "In the macOS…"
+- Features are **in** macOS, not **on** macOS.
+
+**iMessage** — Use to refer to the service. Users send "a message," not "an iMessage."
+
+**AirPlay / AirDrop / FaceTime** — Don't use as verbs.
+
+**CarPlay** — Don't use as a verb. CarPlay Dashboard takes "the"; CarPlay Home does not.
+
+**App Store** — Apps are available in, on, or from the App Store. Precede with an article.
+
+---
+
+## Common Terminology
+
+| Use | Don't use |
+|---|---|
+| email | e-mail |
+| internet | Internet (except in proper names like Internet Protocol) |
+| website | web site |
+| app | application (in most contexts) |
+| dialog | dialog box |
+| sign in | log in |
+| set up (v.) | setup (v.) |
+| turn on / turn off | enable / disable, activate / deactivate |
+| select | highlight, check (for checkboxes) |
+| choose | select (for menu items) |
+| appear | display (when items become visible) |
+| laptop | notebook computer |
+| display | monitor (for Apple displays) |
+| shortcut menu | contextual menu (in user materials) |
+| press and hold | hold down |
+| touch and hold | long press (in user materials) |
+| a.m. / p.m. | am / pm |
+| country or region | country |
+
+---
+
+## Formatting Specifics
+
+### Lists
+- Precede all lists with a colon.
+- All list items start with a capital letter.
+- Fragments and items completing a main clause: no period. Complete sentences: end with a period.
+- All bulleted items in a single list should be parallel.
+- Use numbered lists for sequential steps. Each step should be a complete sentence with closing punctuation.
+
+### Units of Measure
+- Spell out units in body text; abbreviate in tables and specs.
+- Hyphenate when used as compound adjective before a noun: 27-inch screen, 500 GB hard disk (no hyphen with abbreviations).
+- Use "by" not "x" for dimensions in body text.
+
+### Trademarks
+- All Apple trademarks mentioned in a document must receive a credit line on the copyright page.
+- Don't include trademark symbols (™, ®) in cross-references to document titles.
+
+---
+
+## Words to Avoid in User Materials
+
+| Avoid | Use instead |
+|---|---|
+| abort | exit, stop, quit |
+| activate / deactivate | turn on / turn off |
+| allow (when user can be subject) | rewrite: "You can…" |
+| click on | click |
+| desire / desired | want / the [item] you want |
+| due to | because of, caused by |
+| enable / disable | turn on / turn off |
+| error message | message, alert |
+| grandfathered | legacy, exempt, preexisting |
+| hang | not responding |
+| highlight (v.) | select |
+| hit (a key) | press |
+| kill | force quit, terminate, stop |
+| launch | open (in user materials) |
+| mount / unmount | open, make available |
+| once (meaning "after") | after |
+| since (meaning "because") | because |
+| utilize | use |
+
