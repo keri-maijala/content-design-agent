@@ -1,366 +1,274 @@
 # Apple Home — Voice and Tone Guide
-**Sources:** apple.com/home-app, apple.com/homepod-2nd-generation, apple.com/homepod-mini, apple.com/apple-tv-4k
-**Status:** Derived from publicly available Apple marketing copy. Not an internal Apple document.
+**Source:** Synthesized from apple.com/home-app, apple.com/homepod-2nd-generation, apple.com/homepod-mini, apple.com/apple-tv-4k, apple.com/shop/smart-home/accessories
+**Scope:** Apple Home app, HomePod, HomePod mini, and Apple TV as home hub; smart home accessory copy
 
 ---
 
-## What this guide covers
+## Overview
 
-Voice and tone guidance for content designers working across Apple Home products and services: the Home app, HomePod, HomePod mini, and Apple TV 4K. Patterns are drawn directly from Apple's live product pages and translated into practical guidance for UI writing, onboarding, and in-product copy.
+Apple Home copy lives at the intersection of two Apple values: effortless control and deep privacy. The home is personal. The writing reflects that — it's calm, capable, and never shows off. Apple Home doesn't talk about what it does. It talks about what *you* can do.
 
----
-
-## The Apple Home voice
-
-The Apple Home ecosystem speaks in the same confident, uncluttered Apple voice across all products — but each product has a distinct register, and content should reflect the right one for the surface.
-
-### What the voice is
-
-**Confident without boasting.** Apple states capability directly and lets it speak for itself. "Profound sound." not "The most incredible sound you've ever heard." Superlatives are rare and always earned.
-
-**Warm without being casual.** Friendly but never chatty. It doesn't use slang, it doesn't try too hard, and it trusts the reader.
-
-**Precise.** Every word is chosen. Short sentences, concrete nouns, active verbs. No padding.
-
-**Technically sophisticated but not technical.** Apple names real technologies — Spatial Audio, computational audio, beamforming tweeters, Dolby Atmos — but always in service of what the user experiences, not as a show of specs.
-
-### What the voice is not
-
-- Not playful in a way that undercuts quality positioning
-- Not formal or corporate
-- Not breathless or hyperbolic — "incredible," "amazing," and "revolutionary" are used sparingly and only when earned
-- Not passive — Apple copy acts. Things "fill the room," "surround you," "adapt," "recognize," "protect"
+This guide covers the voice and tone principles that govern Apple Home product copy, UI writing, and accessory-related content. It supplements the Apple Style Guide and Apple HIG — it does not replace them.
 
 ---
 
-## Product registers
+## Voice
 
-Each Apple Home product has a distinct emotional register that content should match.
+### Capable without being boastful
 
-### Home app — The organizer
+Apple Home copy leads with what the user can accomplish, not with what the product has achieved. Features are framed as things that happen naturally, not as technical feats.
 
-**Relationship to user:** Helpful coordinator. The app brings order to complexity.
+| ✅ Do | ❌ Don't |
+|---|---|
+| Control your smart home without lifting a finger. | HomePod's advanced AI automates your entire home ecosystem. |
+| Forget to shut your garage? Close it remotely with Siri. | HomePod's remote access technology enables garage door management from any location. |
+| Set your lights to turn off every night at 10 p.m. Done. | Configure sophisticated lighting automations with powerful scheduling capabilities. |
 
-**Tone:** Clear, calm, reassuring.
-
-**Primary promise:** Control and visibility. "The foundation for a smarter home." "Instant access." "At a glance."
-
-**Key patterns:**
-- Action-oriented but relaxed: "control," "view," "access," "share," "automate"
-- Emphasizes ease: "simple," "easy," "automatically," "effortlessly," "a snap"
-- Emphasizes breadth: "all your accessories," "all your Apple devices," "compatible with a wide variety"
-- Privacy is matter-of-fact: "stored in a way that Apple can't read it," "encrypted end-to-end"
-
-**Avoid:** Over-explaining technical setup. The app makes complex things simple — copy should too.
+**The test:** Could a real person say this out loud without sounding like they're reading a brochure? If not, rewrite it.
 
 ---
 
-### HomePod — The audiophile
+### Understated confidence
 
-**Relationship to user:** Elevated companion. For people who take sound seriously.
+Apple Home doesn't oversell. Copy is direct and matter-of-fact. The product's capability speaks for itself — the writing just needs to get out of the way.
 
-**Tone:** Rich, sensory, confident. Copy leans into the physicality of sound.
+- Short sentences. Declarative structure.
+- No superlatives unless they're concrete and defensible.
+- Confidence comes from precision, not volume.
 
-**Primary promise:** Uncompromising audio quality. "Immersive, high-fidelity audio." "Profound sound."
-
-**Key patterns:**
-- Sensory and spatial: "fills the room," "surrounds you," "immerses you," "enveloping," "spaciousness"
-- Precise technical terms in service of experience: "beamforming tweeters," "room sensing," "Spatial Audio"
-- Short punchy fragments used sparingly for emphasis: "Superclean bass. Fills the room. Boom."
-- Second-person immersion: "you'll experience," "you'll enjoy," "you'll hear"
-- Smart home is secondary — positioned as a powerful bonus, not the headline
-
-**Avoid:** Leading with smart home features. HomePod leads with sound. Smart home is the supporting cast.
+| ✅ Do | ❌ Don't |
+|---|---|
+| Profound sound. | Unbelievably incredible audio that will blow your mind. |
+| Private and secure. | The most private smart home experience ever created. |
+| A powerful way to control your smart home. | The ultimate revolutionary smart home solution. |
 
 ---
 
-### HomePod mini — The accessible option
+### Warmth without familiarity
 
-**Relationship to user:** Playful, approachable companion. For everyone, everywhere in the home.
+Apple Home copy is warm — it acknowledges real life, real households, real moments. But it's never cutesy, never chummy, never trying too hard.
 
-**Tone:** Warm, slightly playful, inclusive. Mini's copy acknowledges its size and turns it into a feature.
+The warmth comes from specificity. Real scenarios (dinner is ready, the game has started, add flour to the grocery list) feel more human than abstract promises ("connect with what matters").
 
-**Primary promise:** Surprisingly big experience in a small package. "Unexpectedly big sound." "Nothing short of amazing."
-
-**Key patterns:**
-- Size-as-feature framing: "just 3.3 inches tall," "fits anywhere," "takes up almost no space"
-- Surprise and delight: "unexpectedly," "surprising," "nothing short of amazing"
-- Family and shared use: "your family," "the whole family," "six different family members"
-- Multiplicity framing: "add more than one," "across the house," "connected sound system for your whole home"
-- Siri commands written as casual human speech: "Hey Siri, add flour to the grocery list"
-
-**Avoid:** Making mini sound like a compromise. It's capable and joyful, not lesser. Don't use "small" as a negative framing.
+| ✅ Do | ❌ Don't |
+|---|---|
+| Hey Siri, tell everyone, Dinner is ready. | Stay connected to the people you love most. |
+| Want to pick anything up on the way home? | Facilitate seamless family communication. |
+| DJ-ing your next dinner party — just a "Siri" away. | Enhance your entertainment experiences with intelligent assistance. |
 
 ---
 
-### Apple TV 4K — The entertainer
+### Privacy as a quiet promise
 
-**Relationship to user:** The living room experience. About gathering, watching together, and quality shared moments.
+Privacy in Apple Home copy is stated once, clearly, and without drama. It's a feature, not a defense. Don't over-explain it or repeat it.
 
-**Tone:** Cinematic, expansive, occasion-focused.
+- "Your data is stored in a way Apple can't read it." — matter-of-fact
+- "All your data stays yours. We never share or sell it." — simple, final
+- "Siri only listens for 'Hey Siri' or 'Siri'" — behavioral, not abstract
 
-**Primary promise:** The best screen experience you can have at home. "Cinematic in every sense." "True-to-life picture. Unreal sound."
+Privacy copy should reassure, not alarm. Avoid language that implies surveillance or risk — the goal is to make people feel safe, not to remind them of what they might have been worried about.
 
-**Key patterns:**
-- "Cinematic" is this product's defining word — appears repeatedly and deliberately
-- Scale and occasion: "biggest screen," "living room," "the whole family," "watch together"
-- Entertainment breadth: abundance of content is part of the value proposition
-- Smart home as convenience, not capability: "Lights. Cameras. Smart home interactions." — secondary and playful
-- Action as invitation: "Discover," "Experience," "Enjoy," "Watch," "Listen," "Explore"
-
-**Avoid:** Leading with smart home features or specs. Lead with what the experience feels like. "Cinematic" belongs to Apple TV — don't apply it to HomePod or the Home app.
-
----
-
-## Shared principles across all Home products
-
-### Privacy is a feature, not a footnote
-
-Privacy language appears on every Apple Home product page — written with confidence, not defensiveness. Apple doesn't apologize for needing your data; it explains why you don't have to worry.
-
-Use:
-- "Stored in a way that Apple can't read it"
-- "Encrypted end-to-end"
-- "Only you and the people you choose"
-- "Your request is associated with a random identifier, not your Apple Account"
-
-Don't write privacy copy that sounds like legal boilerplate or draws attention to risk.
-
-### Siri commands are copy
-
-Siri example commands are written with the same care as headlines. Casual, specific, and real — not generic demos. They show actual tasks in the home context.
-
-Good: "Hey Siri, close the blinds at 8 PM"
-Good: "Siri, what's the temperature in here?"
-Good: "Hey Siri, tell everyone, Dinner is ready"
-
-Avoid generic Siri examples that could apply to any device.
-
-### Ease is earned, not assumed
-
-"Easy," "simple," and "effortless" appear frequently — but only after a capability has been demonstrated. Show the feature, then name how simple it is. Don't open with "It's easy" before the user understands what "it" is.
-
-### Active voice, short sentences
-
-Apple Home copy favors active construction. Things happen: speakers fill rooms, apps let you control accessories, HomePod recognizes your voice. Passive voice is rare. Sentences are short. Fragments appear only for rhythm and emphasis in marketing contexts — never in UI copy.
-
-### Second person throughout
-
-Always "you," "your," "you'll." Never "users" or "customers" in product UI or marketing copy.
+| ✅ Do | ❌ Don't |
+|---|---|
+| Your data is stored in a way Apple can't read it. | Your sensitive home data is protected from unauthorized access at all times. |
+| Siri only listens for "Hey Siri" or "Siri." | Siri will never listen to your conversations without your permission. |
+| Private and secure. | Rest assured your privacy is always protected. |
 
 ---
 
-## Tone by surface
+## Tone by moment
 
-| Surface | Tone weight | Notes |
-|---|---|---|
-| Marketing headlines | Highest craft, most distinctive | Short, sensory, confident. Fragments allowed. |
-| Feature descriptions | Clear, warm | Two to three sentences. Technical terms grounded in experience. |
-| UI labels and buttons | Minimal, functional | Verb-first. No personality. Follow HIG conventions. |
-| Onboarding | Welcoming, reassuring | Lead with what the user gets, not what they have to do. |
-| Error states | Calm, helpful | Explain what happened, offer a path forward. No apology. No alarm. |
-| Privacy disclosures | Matter-of-fact, confident | Not defensive. Not legal. State the fact clearly. |
-| Siri examples | Casual, specific, real | Written as actual speech. Task-based. Home-specific. |
-| Notifications | Direct, brief | What happened. What to do. Nothing more. |
+Apple Home copy is not one register. The tone shifts with what the user is doing and what's at stake.
+
+### Setup and onboarding
+**Tone:** Encouraging, clear, frictionless
+
+The user is taking their first steps. Copy removes doubt and makes progress feel inevitable.
+
+- Short steps. Active verbs. No jargon.
+- Reassure that it's simple — but don't promise it so hard it sounds suspicious.
+- "Just scan the accessory to pair it with the Home app." — friction-free
+- "When you set up HomePod mini, it's automatically added to the Home app." — it just works
+
+Avoid: "Follow these simple steps to complete configuration."
+Prefer: "Scan the accessory to pair it. Done."
+
+---
+
+### Control and automation
+**Tone:** Confident, direct, almost casual
+
+The user is in control. Copy reflects that. Short commands, light energy.
+
+- Use real Siri examples to show naturalness: "Hey Siri, it's movie night."
+- Concrete outcomes, not abstract capabilities: "Lights off every night at 10 p.m."
+- The word "automatically" is powerful here — it signals that things happen without effort.
+
+Avoid: "Configure your lighting schedule preferences."
+Prefer: "Set your lights to turn off every night at 10 p.m. Done."
+
+---
+
+### Error states and alerts
+**Tone:** Calm, clear, actionable
+
+When something goes wrong in a smart home context, the stakes can feel real (a lock didn't engage, a camera went offline). Copy must not escalate anxiety.
+
+- Name what happened simply.
+- Tell the user what to do next.
+- Never blame the user.
+- Never use "error" when "couldn't connect" will do.
+
+Avoid: "An unexpected error has occurred. Please try again."
+Prefer: "Can't reach [accessory name]. Check that it's powered on and connected."
+
+---
+
+### Safety and security notifications
+**Tone:** Direct, calm, clear — never alarmist
+
+Sound Recognition (smoke, carbon monoxide) and security camera alerts require particular care. The information is urgent; the tone is not panicked.
+
+- State the detection plainly.
+- Give the user an immediate action.
+- Do not use exclamation marks.
+- Do not editorialize.
+
+Avoid: "ALERT! Possible smoke detected! Take action immediately!"
+Prefer: "Smoke alarm detected in Kitchen. Check the Home app."
+
+---
+
+### Privacy and permissions
+**Tone:** Matter-of-fact, brief, non-defensive
+
+Permission strings and privacy copy should be the shortest, plainest sentences in the product. They exist to inform, not to persuade.
+
+- Write a single, active sentence.
+- State what the app accesses and why.
+- End with a period.
+
+Avoid: "Allowing access to your home data helps us provide you with a better experience."
+Prefer: "Lets you control this accessory with the Home app and Siri across your Apple devices."
+
+---
+
+## What Apple Home copy is not
+
+**Not technical.** The underlying infrastructure (Matter, HomeKit APIs, end-to-end encryption) may be complex. The copy is not. Users don't need to know how it works — they need to know what they can do.
+
+**Not breathless.** Exclamation marks don't belong in Apple Home product copy. Enthusiasm is expressed through short sentences and strong verbs, not punctuation.
+
+**Not abstract.** "Stay connected to what matters" is not Apple Home copy. Real scenarios, real moments, real Siri commands are Apple Home copy.
+
+**Not defensive.** Privacy copy doesn't apologize or over-reassure. It states facts.
+
+**Not repetitive.** Each surface gets one chance to say what it needs to say. Don't restate features the user already knows. Don't say "smart home" twice in a paragraph.
 
 ---
 
 ## Terminology
 
-### Always use
+Follow the Apple Style Guide and HomeKit HIG for all product names and HomeKit terminology. Key reminders for Apple Home context:
 
-| Term | Notes |
+| Use | Don't use |
 |---|---|
-| HomeKit | One word. Capital H and K. Never "Home kit" or "Homekit." |
-| Home app | Two words. First mention: "Apple Home app." Subsequent: "the Home app." Never "Home" alone. |
-| HomePod | One word. Capital H and P. |
-| HomePod mini | Lowercase m. |
-| Apple TV 4K | Exactly as written. Space before 4K. |
-| Home Hub | Two words. Capital H on both. Never "HomeHub." |
-| Siri | Always capitalized. |
-| Spatial Audio | Both words capitalized when referring to Apple's feature. |
-| Matter | Capitalized when referring to the smart home connectivity standard. |
-| scene | Not "action set" — that's the API term. "Scene" is the UI term. |
-| Set up (verb) | Two words. "Set up HomeKit." |
-| Setup (noun) | One word. "The setup is complete." |
-| Sign in | Not "Log in" — Apple uses "Sign in" across all surfaces. |
+| Home app | The Home, Home application |
+| Apple Home app (first mention in body copy) | Just "Home" |
+| HomePod | Homepod, home pod |
+| HomePod mini | HomePod Mini, homepod mini |
+| Scene | Action set (never in UI) |
+| Automation | Workflow, rule |
+| Accessory | Device (prefer "accessory" in HomeKit contexts) |
+| Turn on / Turn off | Enable / Disable |
+| Sign in | Log in |
 
-### Never use
+---
 
-| Term | Use instead |
+## Tone spectrum reference
+
+| Dimension | Apple Home register |
 |---|---|
-| Home kit | HomeKit |
-| Homepod | HomePod |
-| home app | Home app |
-| HomeHub | Home Hub |
-| action set | scene |
-| service / characteristic | Descriptive names (e.g. "ceiling fan light," "brightness") |
-| Log in / Login | Sign in / Sign-in |
-| Click | Tap (touch) or Select (non-touch) |
-| Users / customers | You / your |
+| Warmth | Warm, but not cozy |
+| Directness | Direct — lean short |
+| Energy | Steady, calm |
+| Playfulness | None in product UI; very light in marketing |
+| Authority | Confident, matter-of-fact |
+
+**When tone flexes:**
+- Setup / onboarding: warmth ↑, directness ↑ (step-by-step), energy slightly ↑
+- Control / automation: directness ↑↑, energy steady, playfulness ↔ (light OK in Siri examples)
+- Errors: warmth ↑, directness ↑↑, energy ↓, playfulness off
+- Safety alerts: all dimensions flatten — maximum directness, zero playfulness
+- Privacy / permissions: warmth neutral, directness ↑↑, authority ↑
 
 ---
 
-## Do / don't examples
+## Marketing — Product value statements
+**Owner: Marketing**
 
-### Buttons and labels
+This section documents the core value proposition for each Apple Home product as expressed in marketing copy. These are not UI patterns — they're the emotional and aspirational register Apple uses to introduce and sell the product. They apply to marketing and promotional contexts only and should not drive product UI, error states, or instructional copy.
 
-| Don't | Do |
-|---|---|
-| Setup HomeKit | Set up HomeKit |
-| Login | Sign in |
-| Home kit | HomeKit |
-| Click here to continue | Continue |
-| OK | Done / Got it / [specific action label] |
-
-### Error states
-
-| Don't | Do |
-|---|---|
-| Something went wrong. We're sorry. | HomePod isn't responding. Make sure it's plugged in and on Wi-Fi. |
-| Error: Unable to connect | Can't connect to your home. Check your internet connection and try again. |
-| An unknown error occurred | Your home data couldn't load. Pull down to try again. |
-
-### Onboarding
-
-| Don't | Do |
-|---|---|
-| Please complete the following steps. | You're a few steps away from a smarter home. |
-| You must grant permission to access your home data. | To control your accessories, allow access to your home. |
-| Setup complete! | Your home is ready. |
-
-### Privacy
-
-| Don't | Do |
-|---|---|
-| We take your privacy seriously. | Your home data is stored in a way Apple can't read. |
-| Your data may be used for... | What you say to Siri stays between you and your devices. |
-| Privacy policy | Learn how we protect your data |
+The key distinction from UX copy: marketing leads with feeling and outcome. UX copy leads with action and clarity.
 
 ---
 
-## A note on this guide
+### Home app
+**Value statement:** The foundation for a smarter home.
 
-This guide is derived from Apple's publicly available marketing pages, not internal Apple documentation. It reflects observable patterns in Apple's product copy — the language Apple uses to describe its Home products to the world. It should be treated as a starting point for content decisions, not a substitute for internal style guidance. Where this guide conflicts with Apple's official HIG or trademark guidelines, defer to those.
+The Home app is positioned as the hub that makes everything else possible — secure, simple, and the key that unlocks the full potential of a smart home. Marketing copy emphasizes the welcoming experience: instant access, color-coordinated clarity, and control that feels natural across every Apple device.
 
----
+Key emotional beats: belonging, ease, trust. The home should feel like *your* home, made a little smarter.
 
-## Marketing copy — Surface annotations
-
-> **Surface exception [Marketing]:** The following guidance applies specifically to marketing surfaces — webpage headers, hero copy, subheads, and feature descriptions. These surfaces follow different conventions from UI copy and in-product writing. Fragments, sensory language, and product-specific vocabulary are permitted here in ways they are not in UI copy.
-> Derived from: apple.com/home-app, apple.com/homepod-2nd-generation, apple.com/homepod-mini, apple.com/apple-tv-4k
-
----
-
-### What marketing copy does differently from UI copy
-
-Marketing copy sells the experience before the user has it. UI copy supports the user while they're having it. These are different jobs and they require different registers.
-
-| Dimension | UI copy | Marketing copy |
-|---|---|---|
-| Sentence structure | Complete sentences | Fragments allowed — even preferred |
-| Length | As short as possible | Short, but can breathe |
-| Personality | Minimal — function first | Distinctive — voice forward |
-| Technical terms | Grounded in what user does | Grounded in what user experiences |
-| Tone | Calm, helpful | Confident, sensory, aspirational |
+> *"The new Home app is secure and simple to set up, and it unlocks the full potential of your smart home."*
+> *"A truly welcoming experience."*
 
 ---
 
-### Hero headlines and page titles
+### HomePod (2nd generation)
+**Value statement:** Profound sound. Powerful home hub.
 
-Hero headlines are the highest-craft copy on the page. They set the register for everything that follows.
+HomePod leads with audio — immersive, high-fidelity, room-filling — and follows with intelligence. It's a powerhouse that earns its place in the home through performance, then reveals its smart home credentials. Privacy is a quiet closer, not a headline.
 
-**Conventions:**
-- Short — typically 2–6 words
-- Fragments are not only allowed, they're the default: "Profound sound." "Home. Elevated." "Cinematic in every sense."
-- One idea per headline — never compound
-- No punctuation except a period for emphasis, or none at all
-- Avoid question marks — Apple states, it doesn't ask
-- Never start with "Introducing" — Apple drops straight into the claim
+Key emotional beats: richness, immersion, effortlessness. The home sounds better and runs itself.
 
-**By product:**
-
-HomePod headlines lead with sound. "Profound sound." "Immersive, high-fidelity audio." "Hits the high notes."
-
-HomePod mini headlines lead with surprise and scale. "Unexpectedly big sound." "Big sound. Small package." The contrast between small and big is the hook.
-
-Apple TV 4K headlines lead with the cinematic experience. "Cinematic in every sense." "The cinematic home theater experience." "Cinematic" is this product's signature word — use it.
-
-Home app headlines lead with control and simplicity. "The foundation for a smarter home." "Everything at a glance." "Your home, your way."
-
-**Examples:**
-
-| ✅ On-brand | ❌ Off-brand |
-|---|---|
-| Profound sound. | Experience the most incredible audio quality. |
-| Unexpectedly big sound. | Small speaker, surprisingly good audio. |
-| Cinematic in every sense. | Watch movies the way they were meant to be seen. |
-| Your home, elevated. | Control all your smart home devices easily. |
+> *"Profound sound."*
+> *"Amp up everything you hear."*
+> *"Hands down, the best way to run the house."*
 
 ---
 
-### Subheads and section headers
+### HomePod mini
+**Value statement:** Surprisingly big. Fits anywhere.
 
-Subheads do the work of explaining what the headline announces. They're longer than headlines but still tight.
+HomePod mini's marketing plays the size contradiction: unexpectedly powerful for something so small. The value proposition expands outward — one speaker is great, more speakers create a connected home sound system. It's also the most family-forward product in the lineup, with multi-user voice recognition and Intercom front and center.
 
-**Conventions:**
-- Complete sentences are more common here than in headlines
-- Still active voice — subject acts, things happen
-- Ground technical terms in the experience: "beamforming tweeters" is followed immediately by what that means for the listener
-- Second person throughout: "you'll," "your," "you"
-- No more than two sentences — if you need more, break it into a new section
+Key emotional beats: delight, discovery, togetherness. A small thing that makes the whole house feel connected.
 
-**Examples:**
-- "HomePod mini delivers rich 360-degree audio with deep bass, natural midrange, and crisp high frequencies — all from a speaker that fits in the palm of your hand."
-- "The Home app gives you instant access to your accessories, scenes, and automations — all in one place, across all your Apple devices."
-- "Apple TV 4K brings the movie theater home, with support for Dolby Vision, HDR10+, and Dolby Atmos."
+> *"Nothing short of amazing."*
+> *"You've never heard color like this."*
+> *"Jam-packed with innovation, HomePod mini delivers unexpectedly big sound for a speaker of its size."*
 
 ---
 
-### Feature descriptions
+### Apple TV 4K
+**Value statement:** The Apple experience. Cinematic in every sense.
 
-Feature descriptions appear below subheads and explain specific capabilities. They're the most functional of the three marketing copy types.
+Apple TV 4K is positioned around the living room as the home's entertainment center and, secondarily, its smart home hub. Marketing leads with visual and audio quality — vivid, immersive, world-class — then folds in Home app functionality as a natural extension.
 
-**Conventions:**
-- 2–3 sentences maximum
-- Lead with what the user experiences, not what the technology does
-- Technical specifics follow the experience claim: "Spatial Audio with Dolby Atmos creates a three-dimensional soundscape — placing sounds all around you, above you, and even behind you."
-- Use parallel structure when describing multiple features on the same page
-- Avoid bullet points in premium product marketing — Apple uses flowing copy, not lists, to describe features
+Key emotional beats: quality, immersion, the living room as the center of the home.
 
-**Pattern:** [What it feels like] + [What makes it possible] + [What it means for you]
-
-Example: "HomePod fills the room with rich, detailed sound. Computational audio continuously monitors and adapts to the acoustics of the space. So you always get the best listening experience, wherever you place it."
+> *"The Apple experience. Cinematic in every sense."*
+> *"Mind-blowing visuals. World-class content. Fully immersive sound."*
 
 ---
 
-### Vocabulary by product — marketing surfaces
+### Smart home accessories
+**Value statement:** Works with Home. Works with your life.
 
-These words and phrases are drawn directly from Apple's marketing pages and represent the approved register for each product.
+Accessory marketing copy is category-level, not product-specific. The consistent message: setup is simple (scan to pair), control is immediate (one app, all devices), and compatibility keeps expanding. Categories — Lighting, Security, Comfort, Entry — do the organizational work so individual accessories don't have to carry the whole story.
 
-**HomePod**
-Use: immersive, spatial, enveloping, profound, high-fidelity, fills the room, surrounds you, computational audio, Spatial Audio, beamforming, room sensing, adapts, groundbreaking
-Avoid: loud, powerful, big sound (that's mini's territory), smart speaker (undersells it)
+Key emotional beats: confidence, simplicity, possibility. A smart home doesn't require expertise — just the right accessories.
 
-**HomePod mini**
-Use: unexpectedly, surprisingly, big sound, fits anywhere, 360-degree, fills the room, the whole family, add more than one, connected sound system
-Avoid: small (as a limitation), basic, entry-level, simple
-
-**Apple TV 4K**
-Use: cinematic, home theater, true-to-life, award-winning, Dolby Vision, Dolby Atmos, living room, gather, together, discover, experience
-Avoid: streaming box, device, set-top box, plug-in (category descriptors Apple never uses)
-
-**Home app**
-Use: foundation, instant access, at a glance, effortlessly, automatically, all your accessories, compatible, works with, your home
-Avoid: dashboard, control panel, hub (too technical), manage (too corporate)
-
----
-
-### What marketing copy never does
-
-- Uses "innovative," "revolutionary," or "game-changing" — Apple's confidence doesn't need these words
-- Leads with specs before experience — specs appear after the claim they support
-- Uses passive voice in hero copy — things happen, Apple doesn't say things were made to happen
-- Writes "introducing" as a headline opener
-- Uses exclamation marks in product description copy — excitement comes from the words, not the punctuation
-- Addresses readers as "users" or "customers" — always "you"
+> *"All your accessories in one app? Smart."*
+> *"Setting up a smart home accessory is simple and secure. Just scan the accessory to pair it with the Home app."*
