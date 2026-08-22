@@ -5,8 +5,41 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Content Design Agent</title>
 <!-- System font stack renders San Francisco on Apple devices — no external font needed -->
+<script src="./prompts.js"></script>
 <script>
-/* ── Prompts (inlined from prompts.js) ── */
+/* ── Prompts (always inline — authoritative) ── */
+/**
+ * Content Design Agent — Prompts
+ * ─────────────────────────────────────────────────────────────────────────────
+ * This file is the reasoning layer of the agent. It defines how the agent
+ * thinks and behaves — separately from the application code in index.html
+ * and separately from the style guide content in /guides.
+ *
+ * Prompts are content decisions, not code decisions. They live here so a
+ * content designer can read, edit, and version them without touching the app.
+ *
+ * For the rationale behind each prompt decision, see SYSTEM_PROMPTS.md.
+ * For style guide content, see /guides.
+ *
+ * Structure
+ * ─────────────────────────────────────────────────────────────────────────────
+ * BASE_PROMPT      Always active. Defines the agent's role, the lookup vs.
+ *                  explore behavior model, and how it shows its work.
+ *
+ * MODE_PROMPTS     Layered on top of the base prompt when a mode is active.
+ *                  Each mode activates a specific interaction pattern.
+ *
+ *   qa             Understanding scope and structure of the loaded guide.
+ *   style          Looking up a specific documented rule or convention.
+ *   brainstorm     Generating copy options through collaborative iteration.
+ *   critique       Evaluating existing copy against the loaded guide.
+ *
+ * buildSystemPrompt(mode, guideName, guideContent)
+ *                  Assembles the three layers — base + guide + mode — into
+ *                  the full prompt sent to the model on each request.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
 const BASE_PROMPT = `You are a content design agent — a thinking partner for designers making content decisions. Your role is to help, not to decide. The designer holds the final call on every judgment.
 
 You are working from a loaded style guide. Everything you recommend should be traceable to that guide or to a stated principle. If something isn't covered by the guide, say so explicitly rather than guessing or inventing rules.
@@ -50,65 +83,156 @@ Never invent rules the guide doesn't contain.
 Never silently resolve a conflict between principles.
 Never ask more than one question at a time.`;
 
-const AUTO_PROMPT = `MODE: INFERRED
 
-You determine what kind of question this is before responding. You do not ask the user to categorize their question. You read it and decide.
+// MODE_PROMPTS removed — behavior is now inferred via AUTO_PROMPT
 
-IDENTIFY THE QUESTION TYPE
 
-LOOKUP — a documented rule exists in the guide. The question has a deterministic answer.
-Signals: "What's the rule for…", "How do we write…", "What format…", "Is it capitalized…", "How should X be formatted", specific named conventions, terminology, punctuation, casing.
-→ Quote the relevant rule verbatim from the guide. Do not paraphrase.
-→ Note which part of the guide it comes from.
-→ If there are common exceptions or edge cases, mention them briefly after the verbatim rule.
-→ One response. No options unless the guide itself documents multiple valid approaches.
+// ── Tier 2 guide detection ────────────────────────────────────────────────────
 
-EXPLORE — the answer depends on voice, tone, intent, or context the guide doesn't fully determine.
-Signals: "Help me write…", "What should this say…", "How should this feel…", "Write options for…", "Is this right…", anything involving error states, empty states, onboarding, alerts, notifications, or user emotional context.
-→ Offer options scaled to how open the question is:
-   2 options — focused question, clear constraints
-   3 options — open question with room for interpretation
-   Name what each option prioritizes and what it trades off.
-→ End with one specific question that moves the decision forward.
+// Keywords that clearly signal Apple Home domain — load Tier 2 automatically
+const HOME_KEYWORDS_CLEAR = [
+  'homepod', 'homepod mini', 'mini homepod', 'home pod',
+  'apple tv', 'apple tv 4k', 'appletv',
+  'home app', 'apple home', 'homekit', 'home kit',
+  'smart home', 'home hub', 'accessory', 'accessories',
+  'scene', 'automation', 'home automation',
+  'siri', 'hey siri'
+];
 
-CRITIQUE — the user has shared copy or a screenshot for evaluation.
-Signals: "Check this…", "Is this right…", "Flag any…", "Does this match…", image attached, copy pasted for review.
+// Keywords that are ambiguous — trigger a clarifying question
+// Only used when NO clear signal is present
+const HOME_KEYWORDS_AMBIGUOUS = [
+  'speaker', 'lights', 'thermostat', 'camera',
+  'doorbell', 'lock', 'plug', 'switch', 'sensor'
+];
 
-Scale the response to the complexity of the copy:
+/**
+ * Detects whether a user message implies a specific domain.
+ * Returns: 'home' | 'ambiguous' | null
+ */
+function detectDomain(message) {
+  const lower = message.toLowerCase()
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
-SIMPLE (one element, clear rule): If context is missing, ask one clarifying question and stop. Do not pre-answer, do not assume, do not give options. Wait for the response. Once context is clear, give the corrected copy and a brief plain-language reason. No tables, no headers, no sections.
+  for (const kw of HOME_KEYWORDS_CLEAR) {
+    if (lower.includes(kw)) return 'home';
+  }
 
-Correct sequence:
-1. User submits copy without enough context
-2. Agent asks one question: "Is this for a button or instructional body text?"
-3. User answers
-4. Agent gives the corrected version and a brief reason
+  if (/\bmini\b/.test(lower) && /\b(home|pod|apple)\b/.test(lower)) return 'home';
+  if (/\btv\b/.test(lower) && /\b(apple|4k|stream)\b/.test(lower)) return 'home';
+  if (/\bhome\b/.test(lower) && /\b(app|hub|kit|pod|screen|device)\b/.test(lower)) return 'home';
 
-COMPLEX (multiple elements, judgment calls, or ambiguous context): Use this structure:
-→ What's working (one sentence).
-→ Issues: for each, name the element, what's wrong, and the fix — in plain prose, not a table.
-→ Flag anything the guide doesn't clearly resolve.
-→ End with one question identifying the most important remaining decision.
+  for (const kw of HOME_KEYWORDS_AMBIGUOUS) {
+    const regex = new RegExp('\\b' + kw + '\\b', 'i');
+    if (regex.test(message)) return 'ambiguous';
+  }
 
-Never use markdown tables in responses. They render as raw characters in most interfaces.
+  return null;
+}
 
-UNCERTAIN — you can't tell what kind of question it is.
-→ Ask one clarifying question. Never more than one.
+const AUTO_PROMPT = `You are a content design partner having a conversation — not writing a report. No headers. No labels like "CRITIQUE" or "LOOKUP." No bold section titles. Just talk.
 
-RULES THAT APPLY TO ALL TYPES
-Never present a single answer as final on a subjective question.
-Never invent rules the guide doesn't contain — flag gaps instead.
-Never silently resolve a conflict between principles — name it.
+CLARIFY ONLY WHEN CONTEXT IS GENUINELY MISSING
+
+Before responding, check: does the question give you enough context to answer precisely?
+
+Context is present when the person has specified: the surface (button, heading, body text, notification, webpage, marketing, etc.), the product, or the scenario. If any of these are clear from what they wrote, proceed directly to the answer.
+
+Context is missing when you genuinely cannot give a precise answer without knowing more — for example, if copy is submitted with no indication of where it appears and the rule differs by surface.
+
+Only then ask one clarifying question and stop. The question must be about what is genuinely unknown — never about something the designer has already told you.
+
+If the designer named a product (HomePod, HomePod mini, Apple TV, Home app, or any variation) — do not ask which product.
+If the designer named a surface (button, webpage, header, onboarding, marketing) — do not ask which surface.
+Ask only about what is genuinely missing.
+
+Nothing else alongside the question. No answer. No correction. No reasoning. Just the question. Wait.
+
+If context is clear — answer directly. Do not ask.
+
+SURFACES THE GUIDE COVERS
+
+The loaded guide covers both in-product UI copy AND marketing copy for Apple Home products. Do not tell the designer that webpage or marketing copy is outside scope — it is explicitly covered in the guide's marketing annotations section. Surfaces include:
+
+UI surfaces: buttons, labels, navigation, alerts, error states, empty states, onboarding, notifications, tooltips, settings, permission strings.
+
+Marketing surfaces: webpage hero headlines, page headers, subheads, section headings, feature descriptions, product page copy.
+
+If a designer asks for help with a webpage header, hero copy, subhead, or feature description for a Home product — answer using the marketing annotations in the guide.
+
+Before answering a marketing copy request, confirm you know which product it's for. Each Home product has a distinct marketing register:
+- HomePod: premium sound, sensory, audiophile
+- HomePod mini: surprise, accessibility, family, unexpectedly big
+- Apple TV 4K: cinematic, living room, entertainment occasion
+- Home app: control, simplicity, foundation
+
+If the product is named or clearly implied in the current message OR has been established earlier in the conversation — proceed. Do not ask again about something already discussed.
+If the product has genuinely not been mentioned anywhere in the conversation — ask exactly this and stop: "Which Home product is this for — HomePod, HomePod mini, Apple TV 4K, or the Home app?"
+
+When you do have the product and surface, open your response with a brief signal that you're applying marketing conventions. One sentence: "Shifting to marketing register for this one — applying HomePod mini conventions." Then give the copy. Then the brief reason.
+
+WHEN YOU HAVE ENOUGH CONTEXT
+
+Your response must follow this exact order, every time:
+
+1. The corrected copy. First. Nothing before it.
+2. The reason, in one or two plain sentences after.
+
+Exception — marketing surfaces only: When the question is about a marketing surface (webpage header, hero copy, subhead, feature description), open with one sentence signaling the register shift before the copy. Example: "Shifting to marketing register — webpage headers follow different conventions than UI copy." Then give the copy. Then the brief reason.
+
+This order is mandatory. Never lead with the problem. Never lead with a list of issues. Never lead with an explanation. The corrected copy is always the first thing the designer reads — except on marketing surfaces where the register signal comes first.
+
+Correct example:
+"Set up HomeKit. 'Setup' is the noun — the verb is two words. 'HomeKit' is always one word with a capital K."
+
+Incorrect example — do not do this:
+"Two issues here. 'Setup' should be 'set up'... Corrected version: Set up HomeKit."
+
+The incorrect version buries the answer. The corrected copy comes first, always.
+
+For nuanced questions where context changes the answer, offer 2–3 options. For each: write the copy, one sentence on what it prioritizes, one sentence on what it trades off. End with one question that moves the decision forward.
+
+RULES
+Never use markdown tables.
+Never use headers or category labels in responses.
+Never answer before asking if context is missing.
 Never ask more than one question at a time.
-Always show which principle or guide section you're applying.`;
+Keep responses short. Simple questions get simple answers.
+Name the principle briefly — one sentence, not a lecture.
 
-function buildSystemPrompt(mode, guideName, guideContent) {
-  return [
+REFERENCE LINKS
+Only add a link when the designer would benefit from reading more. Format:
+"If you'd like more detail: [section name](URL)"
+
+Available references:
+- HIG: https://developer.apple.com/design/human-interface-guidelines/designing-for-ios
+- HomeKit: https://developer.apple.com/design/human-interface-guidelines/homekit
+- Privacy: https://developer.apple.com/design/human-interface-guidelines/privacy`;
+
+/**
+ * Assembles the full system prompt from its three layers.
+ */
+function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Conflict) {
+  const parts = [
     BASE_PROMPT,
     `---\n\nSTYLE GUIDE — ${guideName}:\n${guideContent}`,
-    `---\n\n${AUTO_PROMPT}`
-  ].join('\n\n');
+  ];
+
+  if (tier2Content) {
+    parts.push(`---\n\nDOMAIN GUIDE (loaded based on content context):\n${tier2Content}`);
+  }
+
+  if (tier2Conflict) {
+    parts.push(`---\n\nCONFLICT NOTE: A potential conflict was detected between the main style guide and the domain guide. Flag this to the designer and ask them to decide.`);
+  }
+
+  parts.push(`---\n\n${AUTO_PROMPT}`);
+
+  return parts.join('\n\n');
 }
+
 </script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -117,6 +241,7 @@ function buildSystemPrompt(mode, guideName, guideContent) {
     --bg:        #f2f2f7;
     --surface:   #ffffff;
     --surface-2: #f9f9f9;
+    --sidebar-bg:#f5f5f7;
     --border:    rgba(0,0,0,.1);
     --border-2:  rgba(0,0,0,.18);
     --text:      #1d1d1f;
@@ -224,18 +349,18 @@ function buildSystemPrompt(mode, guideName, guideContent) {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    background: var(--bg);
+    background: #fff;
   }
   .chat-scroll {
     flex: 1;
     overflow-y: auto;
-    padding: 24px 0;
+    padding: 24px 0 16px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    background: var(--bg);
+    gap: 0;
+    background: #fff;
   }
-  .chat-inner { max-width: 720px; margin: 0 auto; width: 100%; padding: 0 24px; }
+  .chat-inner { width: 100%; padding-bottom: 20px; }
 
   .empty-state {
     display: flex;
@@ -261,32 +386,86 @@ function buildSystemPrompt(mode, guideName, guideContent) {
   .empty-state h3 { font-size: 15px; font-weight: 500; color: var(--text-2); }
   .empty-state p { font-size: 13px; max-width: 300px; line-height: 1.6; }
 
-  .msg { display: flex; gap: 10px; align-items: flex-start; }
-  .msg.user { flex-direction: row-reverse; }
-  .avatar {
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 600;
-    flex-shrink: 0; margin-top: 2px;
+  /* ── Messages — iOS iMessage bubble style ── */
+  .msg {
+    display: flex;
+    align-items: flex-end;
+    margin-bottom: 0;
+    position: relative;
   }
-  .avatar.ai { background: var(--accent-bg); color: var(--accent); }
-  .avatar.user { background: var(--surface); border: 0.5px solid var(--border); color: var(--text-2); font-size: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  .msg.ai-msg  { padding: 0 192px 0 192px; }
+  .msg.user-msg { padding: 0 192px 0 192px; flex-direction: row-reverse; }
+
+  .avatar { display: none; }
+
+  .bubble-wrap {
+    position: relative;
+    display: inline-flex;
+    max-width: 75%;
+  }
+
   .bubble {
-    max-width: 85%;
     padding: 10px 14px;
-    border-radius: 18px;
-    font-size: 13px;
-    line-height: 1.65;
+    font-size: 17px;
+    line-height: 1.35;
+    word-wrap: break-word;
+    position: relative;
+    display: inline-block;
   }
+
   .bubble.ai {
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    border-top-left-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    background: #e5e5ea;
+    color: #000;
+    border-radius: 18px 18px 18px 4px;
   }
-  .bubble.user { background: var(--accent); color: #fff; border-top-right-radius: 4px; }
-  .bubble.loading { color: var(--text-3); font-style: italic; }
+  .bubble.ai::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: -8px;
+    width: 20px;
+    height: 20px;
+    background: #e5e5ea;
+    border-bottom-right-radius: 50%;
+  }
+  .bubble.ai::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: -26px;
+    width: 26px;
+    height: 20px;
+    background: #fff;
+    border-bottom-right-radius: 14px;
+  }
+
+  .bubble.user {
+    background: #007aff;
+    color: #fff;
+    border-radius: 18px 18px 4px 18px;
+  }
+  .bubble.user::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: -8px;
+    width: 20px;
+    height: 20px;
+    background: #007aff;
+    border-bottom-left-radius: 50%;
+  }
+  .bubble.user::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: -26px;
+    width: 26px;
+    height: 20px;
+    background: #fff;
+    border-bottom-left-radius: 14px;
+  }
+
+  .bubble.loading { color: #8e8e93; font-style: normal; }
   .bubble p { margin-bottom: 6px; }
   .bubble p:last-child { margin-bottom: 0; }
   .bubble ul, .bubble ol { padding-left: 1.3em; margin: 6px 0; }
@@ -358,7 +537,6 @@ function buildSystemPrompt(mode, guideName, guideContent) {
   .img-chip-remove { background: none; border: none; cursor: pointer; color: var(--text-3); font-size: 14px; line-height: 1; padding: 0; }
   .input-hint { font-size: 11px; color: var(--text-3); letter-spacing: .01em; }
 
-  /* ── Modals ── */
   .overlay {
     position: fixed; inset: 0;
     background: rgba(0,0,0,.35);
@@ -390,40 +568,8 @@ function buildSystemPrompt(mode, guideName, guideContent) {
     font-size: 18px; line-height: 1;
   }
   .modal-close:hover { background: var(--surface-2); color: var(--text); }
-  .modal-body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 18px; }
+  .modal-body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
 
-  /* ── Preset guide cards ── */
-  .preset-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-  .preset-card {
-    text-align: left;
-    padding: 11px 13px;
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--surface);
-    cursor: pointer;
-    font-family: inherit;
-    transition: border-color .15s, background .15s;
-  }
-  .preset-card:hover { border-color: var(--border-2); background: var(--surface-2); }
-  .preset-card.selected { border-color: var(--accent); background: var(--accent-bg); }
-  .preset-name { font-size: 13px; font-weight: 500; color: var(--text); }
-  .preset-card.selected .preset-name { color: var(--accent); }
-  .preset-desc { font-size: 11px; color: var(--text-3); margin-top: 2px; }
-
-  .section-label { font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 8px; }
-  .section-divider {
-    display: flex; align-items: center; gap: 10px;
-    font-size: 11px; color: var(--text-3);
-  }
-  .section-divider::before, .section-divider::after {
-    content: ''; flex: 1; height: 0.5px; background: var(--border);
-  }
-
-  /* tab row */
   .tab-strip {
     display: flex; border: 1px solid var(--border);
     border-radius: var(--radius); overflow: hidden;
@@ -478,7 +624,6 @@ function buildSystemPrompt(mode, guideName, guideContent) {
   }
   .btn-primary:hover { opacity: .88; }
 
-  /* ── Settings modal ── */
   .provider-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .provider-card {
     border: 1.5px solid var(--border); border-radius: var(--radius);
@@ -520,6 +665,38 @@ function buildSystemPrompt(mode, guideName, guideContent) {
     z-index: 200; pointer-events: none;
   }
   .toast.show { opacity: 1; }
+
+  /* ── Preset guide cards ── */
+  .preset-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .preset-card {
+    text-align: left;
+    padding: 11px 13px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color .15s, background .15s;
+  }
+  .preset-card:hover { border-color: var(--border-2); background: var(--surface-2); }
+  .preset-card.selected { border-color: var(--accent); background: var(--accent-bg); }
+  .preset-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .preset-card.selected .preset-name { color: var(--accent); }
+  .preset-desc { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .section-label { font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 8px; }
+  .section-divider {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 11px; color: var(--text-3);
+    margin: 4px 0;
+  }
+  .section-divider::before, .section-divider::after {
+    content: ''; flex: 1; height: 0.5px; background: var(--border);
+  }
 </style>
 </head>
 <body>
@@ -557,7 +734,7 @@ function buildSystemPrompt(mode, guideName, guideContent) {
         <div class="empty-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
         </div>
-        <h3>Loading guide…</h3>
+        <h3>Loading Apple Home guidelines…</h3>
         <p>Or use the guide picker above to switch guides.</p>
       </div>
       <div id="chat-messages"></div>
@@ -598,7 +775,6 @@ function buildSystemPrompt(mode, guideName, guideContent) {
       <button class="modal-close" onclick="closeGuideModal()">×</button>
     </div>
     <div class="modal-body">
-
       <!-- Preset guides -->
       <div>
         <div class="section-label">Apple guides</div>
@@ -629,34 +805,32 @@ function buildSystemPrompt(mode, guideName, guideContent) {
       <!-- Divider -->
       <div class="section-divider">or load a custom guide</div>
 
-      <!-- Custom guide tabs -->
-      <div>
-        <div class="tab-strip">
-          <button class="tab active" id="tab-url" onclick="setGuideTab('url')">URL</button>
-          <button class="tab" id="tab-upload" onclick="setGuideTab('upload')">Upload file</button>
-          <button class="tab" id="tab-paste" onclick="setGuideTab('paste')">Paste text</button>
-        </div>
-        <div id="pane-url" style="margin-top:10px">
-          <input class="field-input" id="url-input" placeholder="https://…" type="url">
-          <div class="field-hint">The agent will use the page content as the guide.</div>
-        </div>
-        <div id="pane-upload" style="display:none;margin-top:10px">
-          <div class="drop-zone" onclick="document.getElementById('file-input').click()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            PDF, DOC, DOCX, or TXT
-            <input type="file" id="file-input" accept=".pdf,.doc,.docx,.txt,.md" style="display:none" onchange="handleFileUpload(event)">
-          </div>
-          <div class="file-selected" id="file-selected" style="display:none"></div>
-        </div>
-        <div id="pane-paste" style="display:none;margin-top:10px">
-          <textarea class="field-input" id="paste-input" placeholder="Paste your style guide content here…"></textarea>
-        </div>
-        <div style="margin-top:10px">
-          <div class="field-label">Guide name (optional)</div>
-          <input class="field-input" id="guide-label-input" placeholder="e.g. Shopify Polaris">
-        </div>
+      <div class="tab-strip">
+        <button class="tab active" id="tab-url" onclick="setGuideTab('url')">URL</button>
+        <button class="tab" id="tab-upload" onclick="setGuideTab('upload')">Upload file</button>
+        <button class="tab" id="tab-paste" onclick="setGuideTab('paste')">Paste text</button>
       </div>
-
+      <div id="pane-url">
+        <div class="field-label">Style guide URL</div>
+        <input class="field-input" id="url-input" placeholder="https://…" type="url">
+        <div class="field-hint">The agent will fetch and use the page content as the guide.</div>
+      </div>
+      <div id="pane-upload" style="display:none">
+        <div class="drop-zone" onclick="document.getElementById('file-input').click()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          PDF, DOC, DOCX, or TXT
+          <input type="file" id="file-input" accept=".pdf,.doc,.docx,.txt,.md" style="display:none" onchange="handleFileUpload(event)">
+        </div>
+        <div class="file-selected" id="file-selected" style="display:none"></div>
+      </div>
+      <div id="pane-paste" style="display:none">
+        <div class="field-label">Paste guide content</div>
+        <textarea class="field-input" id="paste-input" placeholder="Paste your style guide content here…"></textarea>
+      </div>
+      <div>
+        <div class="field-label">Guide name (optional)</div>
+        <input class="field-input" id="guide-label-input" placeholder="e.g. Shopify Polaris">
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn-ghost" onclick="closeGuideModal()">Cancel</button>
@@ -700,7 +874,7 @@ function buildSystemPrompt(mode, guideName, guideContent) {
           <input class="field-input" id="api-key-input" type="password" placeholder="Paste your API key here">
           <button class="toggle-vis" onclick="toggleKeyVis()">Show</button>
         </div>
-        <div class="field-hint">Your key is stored only in this browser session — never sent anywhere except the provider's API.</div>
+        <div class="field-hint">Your key is stored only in this browser session — it's never sent anywhere except the provider's API.</div>
       </div>
       <div class="status-row">
         <div class="status-dot" id="status-dot"></div>
@@ -789,6 +963,8 @@ let state = {
   apiKey: '',
   guideContent: '',
   guideName: '',
+  tier2Content: '',
+  tier2Name: '',
   messages: [],
   pendingImgB64: null,
   guideTab: 'url',
@@ -805,8 +981,8 @@ const UNIVERSAL_CHIPS = [
   'How should dates be formatted?'
 ];
 
-function getSystemPrompt() {
-  return buildSystemPrompt('auto', state.guideName, state.guideContent);
+function getSystemPrompt(tier2Content, tier2Conflict) {
+  return buildSystemPrompt('auto', state.guideName, state.guideContent, tier2Content || '', tier2Conflict || false);
 }
 
 function renderChips() {
@@ -831,10 +1007,7 @@ function selectPreset(el) {
   state.selectedPreset = { file: el.dataset.file, name: el.dataset.name };
 }
 
-// ── Guide loading ──
-
 function openGuideModal() {
-  // Highlight the currently active guide
   if (state.guideName) {
     document.querySelectorAll('.preset-card').forEach(c => {
       c.classList.toggle('selected', c.dataset.name === state.guideName);
@@ -851,7 +1024,6 @@ function closeGuideModal(e) {
 }
 
 function setGuideTab(t) {
-  // Selecting a custom tab clears preset selection
   state.selectedPreset = null;
   document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('selected'));
   state.guideTab = t;
@@ -876,7 +1048,6 @@ function handleFileUpload(e) {
 }
 
 async function loadGuide() {
-  // Preset takes priority if one is selected
   if (state.selectedPreset) {
     try {
       const res = await fetch(`./guides/${state.selectedPreset.file}`);
@@ -891,7 +1062,6 @@ async function loadGuide() {
     return;
   }
 
-  // Custom guide
   let content = '', name = '';
   const labelInput = document.getElementById('guide-label-input').value.trim();
 
@@ -983,7 +1153,7 @@ function addMessage(role, text, imgB64) {
   wrap.className = 'chat-inner';
 
   const msg = document.createElement('div');
-  msg.className = `msg ${role}`;
+  msg.className = `msg ${role} ${role === 'ai' ? 'ai-msg' : 'user-msg'}`;
 
   const av = document.createElement('div');
   av.className = `avatar ${role}`;
@@ -1063,6 +1233,30 @@ async function send() {
   state.messages.push({ role: 'user', content: msgContent });
   clearImg();
 
+  // ── Tier 2 domain detection ──
+  let tier2Content = state.tier2Content || '';
+  let tier2Conflict = false;
+
+  if (text && typeof detectDomain === 'function') {
+    const domain = detectDomain(text);
+    if (domain === 'home' && !state.tier2Content) {
+      try {
+        const t2res = await fetch('./guides/apple-home-voice-tone.md');
+        if (t2res.ok) {
+          state.tier2Content = await t2res.text();
+          state.tier2Name = 'Apple Home Voice and Tone';
+          tier2Content = state.tier2Content;
+          showToast('Home voice and tone guide loaded');
+        }
+      } catch(e) {}
+    } else if (domain === 'ambiguous' && !state.tier2Content) {
+      const clarifyMsg = "Which Apple Home product is this for — HomePod, HomePod mini, Apple TV, or the Home app? That'll help me load the right guidance.";
+      addMessage('ai', clarifyMsg);
+      document.getElementById('send-btn').disabled = false;
+      return;
+    }
+  }
+
   const loadBubble = addMessage('ai', '_Thinking…_');
   loadBubble.classList.add('loading');
   document.getElementById('send-btn').disabled = true;
@@ -1073,7 +1267,7 @@ async function send() {
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: provider.headers(state.apiKey),
-      body: JSON.stringify(provider.buildBody(state.messages, getSystemPrompt()))
+      body: JSON.stringify(provider.buildBody(state.messages, getSystemPrompt(tier2Content, tier2Conflict)))
     });
     const data = await res.json();
     const reply = provider.parseResponse(data);
@@ -1153,12 +1347,21 @@ async function boot() {
   renderChips();
 
   try {
-    const res = await fetch('./guides/apple-guidelines.md');
-    if (!res.ok) throw new Error('not found');
-    const text = await res.text();
-    applyGuide(text, 'Apple Style Guide');
+    const [guidelinesRes, voiceToneRes] = await Promise.all([
+      fetch('./guides/apple-guidelines.md'),
+      fetch('./guides/apple-home-voice-tone.md')
+    ]);
+
+    if (!guidelinesRes.ok) throw new Error('not found');
+    const guidelinesText = await guidelinesRes.text();
+    const voiceToneText = voiceToneRes.ok ? await voiceToneRes.text() : '';
+    const combined = voiceToneText
+      ? guidelinesText + '\n\n---\n\n' + voiceToneText
+      : guidelinesText;
+
+    applyGuide(combined, 'Apple Home Guidelines');
   } catch(e) {
-    applyGuide(EMBEDDED_HIG, 'Apple HIG');
+    applyGuide(EMBEDDED_HIG, 'Apple Home Guidelines');
   }
 }
 
