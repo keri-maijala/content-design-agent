@@ -2,14 +2,16 @@
 
 A standalone, LLM-agnostic content design tool grounded in any style guide.
 
+> **Disclaimer:** This is an independent experimental project. It is not affiliated with, endorsed by, or officially connected to Apple Inc. in any way. All reference material is synthesized from publicly available Apple documentation and product pages.
+
+---
+
 ## What it does
 
 - **Q&A** — ask what a style guide covers or how it's structured
-- **Style lookup** — find specific rules on tone, labels, color, typography
+- **Style lookup** — find specific rules on tone, labels, terminology, and capitalization
 - **Brainstorm** — generate on-guide copy options for any UX problem
 - **Screenshot critique** — upload a UI screenshot and get violations flagged
-
-Ships pre-loaded with the Apple Human Interface Guidelines — iOS.
 
 ---
 
@@ -17,35 +19,41 @@ Ships pre-loaded with the Apple Human Interface Guidelines — iOS.
 
 ```
 content-design-agent/
-├── index.html          ← the entire app (open this in a browser)
-├── README.md           ← this file
+├── index.html              ← the entire app (open this in a browser)
+├── prompts.js              ← agent prompts and behavior configuration
+├── README.md               ← this file
+├── DECISIONS.md            ← log of key project decisions and rationale
+├── GOVERNANCE.md           ← ownership and contribution guidelines
+├── PROJECT_STATE.md        ← current build state and open work
+├── SYSTEM_PROMPTS.md       ← documented system prompt versions
 └── guides/
-    └── apple-hig.md    ← Apple HIG content (swap in any guide)
+    ├── apple-guidelines.md       ← Apple Style Guide: editorial rules, UI elements, interaction verbs
+    ├── apple-terminology.md      ← Apple Style Guide: complete A–Z terminology dictionary
+    ├── apple-homekit.md          ← HomeKit HIG: terminology, setup, naming, and Siri guidance
+    ├── apple-privacy.md          ← Apple Privacy HIG: permissions, purpose strings, data protection
+    └── apple-home-voice-tone.md  ← Voice and tone for Apple Home, HomePod, and Apple TV (incl. Marketing)
 ```
 
 ---
 
 ## Running locally
 
-Just open `index.html` in any browser. No server required — but if you want
-the `guides/apple-hig.md` file to load automatically, serve it with a simple
-local server:
+Open `index.html` in any browser. No server required — but to load the `guides/` files automatically, serve with a simple local server:
 
 ```bash
 # Python (built into macOS/Linux)
 python3 -m http.server 8080
 # then open http://localhost:8080
 
-# Node (if you have it)
+# Node
 npx serve .
 ```
 
-Without a server, the app falls back to a built-in copy of the HIG — everything
-still works.
+Without a server, the app falls back to built-in content — everything still works.
 
 ---
 
-## Deploying (so you can share a URL)
+## Deploying
 
 ### GitHub Pages (free, 5 minutes)
 1. Create a new GitHub repository
@@ -75,8 +83,7 @@ vercel
 4. Paste your API key
 5. Save
 
-Keys are stored in memory for the session only — never persisted or sent
-anywhere except the provider's API.
+Keys are stored in memory for the session only — never persisted or sent anywhere except the provider's API.
 
 ### Where to get API keys
 - **Anthropic:** console.anthropic.com → API Keys
@@ -86,19 +93,16 @@ anywhere except the provider's API.
 
 ---
 
-## Swapping the style guide
+## Swapping or adding guides
 
 ### Option 1 — Use the UI
-Click the guide pill in the top bar and load a guide by URL, file upload, or
-pasted text.
+Click the guide pill in the top bar and load a guide by URL, file upload, or pasted text.
 
-### Option 2 — Replace the .md file
-Drop a new markdown file into `guides/` and update the "Apple HIG — iOS"
-sidebar button to point to it, or just use the UI to load it.
+### Option 2 — Replace a file
+Drop a new markdown file into `guides/` and update the sidebar button in `index.html` to point to it.
 
 ### Option 3 — Add more guides
-Put multiple `.md` files in `guides/` — the UI's "Load another guide" option
-lets users switch between them at any time.
+Put additional `.md` files in `guides/` — the UI's "Load another guide" option lets users switch between them at any time.
 
 ---
 
