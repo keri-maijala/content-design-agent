@@ -5,41 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Content Design Agent</title>
 <!-- System font stack renders San Francisco on Apple devices — no external font needed -->
-<script src="./prompts.js"></script>
 <script>
-/* ── Prompts (always inline — authoritative) ── */
-/**
- * Content Design Agent — Prompts
- * ─────────────────────────────────────────────────────────────────────────────
- * This file is the reasoning layer of the agent. It defines how the agent
- * thinks and behaves — separately from the application code in index.html
- * and separately from the style guide content in /guides.
- *
- * Prompts are content decisions, not code decisions. They live here so a
- * content designer can read, edit, and version them without touching the app.
- *
- * For the rationale behind each prompt decision, see SYSTEM_PROMPTS.md.
- * For style guide content, see /guides.
- *
- * Structure
- * ─────────────────────────────────────────────────────────────────────────────
- * BASE_PROMPT      Always active. Defines the agent's role, the lookup vs.
- *                  explore behavior model, and how it shows its work.
- *
- * MODE_PROMPTS     Layered on top of the base prompt when a mode is active.
- *                  Each mode activates a specific interaction pattern.
- *
- *   qa             Understanding scope and structure of the loaded guide.
- *   style          Looking up a specific documented rule or convention.
- *   brainstorm     Generating copy options through collaborative iteration.
- *   critique       Evaluating existing copy against the loaded guide.
- *
- * buildSystemPrompt(mode, guideName, guideContent)
- *                  Assembles the three layers — base + guide + mode — into
- *                  the full prompt sent to the model on each request.
- * ─────────────────────────────────────────────────────────────────────────────
- */
-
+/* ── Prompts (inlined from prompts.js) ── */
 const BASE_PROMPT = `You are a content design agent — a thinking partner for designers making content decisions. Your role is to help, not to decide. The designer holds the final call on every judgment.
 
 You are working from a loaded style guide. Everything you recommend should be traceable to that guide or to a stated principle. If something isn't covered by the guide, say so explicitly rather than guessing or inventing rules.
@@ -83,224 +50,87 @@ Never invent rules the guide doesn't contain.
 Never silently resolve a conflict between principles.
 Never ask more than one question at a time.`;
 
+const AUTO_PROMPT = `MODE: INFERRED
 
-// MODE_PROMPTS removed — behavior is now inferred via AUTO_PROMPT
+You determine what kind of question this is before responding. You do not ask the user to categorize their question. You read it and decide.
 
+IDENTIFY THE QUESTION TYPE
 
+LOOKUP — a documented rule exists in the guide. The question has a deterministic answer.
+Signals: "What's the rule for…", "How do we write…", "What format…", "Is it capitalized…", "How should X be formatted", specific named conventions, terminology, punctuation, casing.
+→ Quote the relevant rule verbatim from the guide. Do not paraphrase.
+→ Note which part of the guide it comes from.
+→ If there are common exceptions or edge cases, mention them briefly after the verbatim rule.
+→ One response. No options unless the guide itself documents multiple valid approaches.
 
+EXPLORE — the answer depends on voice, tone, intent, or context the guide doesn't fully determine.
+Signals: "Help me write…", "What should this say…", "How should this feel…", "Write options for…", "Is this right…", anything involving error states, empty states, onboarding, alerts, notifications, or user emotional context.
+→ Offer options scaled to how open the question is:
+   2 options — focused question, clear constraints
+   3 options — open question with room for interpretation
+   Name what each option prioritizes and what it trades off.
+→ End with one specific question that moves the decision forward.
 
+CRITIQUE — the user has shared copy or a screenshot for evaluation.
+Signals: "Check this…", "Is this right…", "Flag any…", "Does this match…", image attached, copy pasted for review.
 
+Scale the response to the complexity of the copy:
 
-// ── Tier 2 guide detection ────────────────────────────────────────────────────
+SIMPLE (one element, clear rule): If context is missing, ask one clarifying question and stop. Do not pre-answer, do not assume, do not give options. Wait for the response. Once context is clear, give the corrected copy and a brief plain-language reason. No tables, no headers, no sections.
 
-// Keywords that clearly signal Apple Home domain — load Tier 2 automatically
-const HOME_KEYWORDS_CLEAR = [
-  'homepod', 'homepod mini', 'mini homepod', 'home pod',
-  'apple tv', 'apple tv 4k', 'appletv',
-  'home app', 'apple home', 'homekit', 'home kit',
-  'smart home', 'home hub', 'accessory', 'accessories',
-  'scene', 'automation', 'home automation',
-  'siri', 'hey siri'
-];
+Correct sequence:
+1. User submits copy without enough context
+2. Agent asks one question: "Is this for a button or instructional body text?"
+3. User answers
+4. Agent gives the corrected version and a brief reason
 
-// Keywords that are ambiguous — trigger a clarifying question
-// Only used when NO clear signal is present
-const HOME_KEYWORDS_AMBIGUOUS = [
-  'speaker', 'lights', 'thermostat', 'camera',
-  'doorbell', 'lock', 'plug', 'switch', 'sensor'
-];
+COMPLEX (multiple elements, judgment calls, or ambiguous context): Use this structure:
+→ What's working (one sentence).
+→ Issues: for each, name the element, what's wrong, and the fix — in plain prose, not a table.
+→ Flag anything the guide doesn't clearly resolve.
+→ End with one question identifying the most important remaining decision.
 
-/**
- * Detects whether a user message implies a specific domain.
- * Returns: 'home' | 'ambiguous' | null
- *
- * Handles word-order variations (e.g. "mini home pod", "home pod mini")
- * and common misspellings or informal references.
- */
-function detectDomain(message) {
-  const lower = message.toLowerCase()
-    .replace(/[^a-z0-9 ]/g, ' ') // normalize punctuation
-    .replace(/\s+/g, ' ')
-    .trim();
+Never use markdown tables in responses. They render as raw characters in most interfaces.
 
-  // Check clear Home signals — includes word-order variants
-  for (const kw of HOME_KEYWORDS_CLEAR) {
-    if (lower.includes(kw)) return 'home';
-  }
+UNCERTAIN — you can't tell what kind of question it is.
+→ Ask one clarifying question. Never more than one.
 
-  // Also catch informal variants like "mini home pod", "the mini", "tv 4k"
-  if (/\bmini\b/.test(lower) && /\b(home|pod|apple)\b/.test(lower)) return 'home';
-  if (/\btv\b/.test(lower) && /\b(apple|4k|stream)\b/.test(lower)) return 'home';
-  if (/\bhome\b/.test(lower) && /\b(app|hub|kit|pod|screen|device)\b/.test(lower)) return 'home';
-
-  // Check ambiguous signals — only if no clear signal found
-  for (const kw of HOME_KEYWORDS_AMBIGUOUS) {
-    const regex = new RegExp('\\b' + kw + '\\b', 'i');
-    if (regex.test(message)) return 'ambiguous';
-  }
-
-  return null;
-}
-
-const AUTO_PROMPT = `You are a content design partner having a conversation — not writing a report. No headers. No labels like "CRITIQUE" or "LOOKUP." No bold section titles. Just talk.
-
-CLARIFY ONLY WHEN CONTEXT IS GENUINELY MISSING
-
-Before responding, check: does the question give you enough context to answer precisely?
-
-Context is present when the person has specified: the surface (button, heading, body text, notification, webpage, marketing, etc.), the product, or the scenario. If any of these are clear from what they wrote, proceed directly to the answer.
-
-Context is missing when you genuinely cannot give a precise answer without knowing more — for example, if copy is submitted with no indication of where it appears and the rule differs by surface.
-
-Only then ask one clarifying question and stop. The question must be about what is genuinely unknown — never about something the designer has already told you.
-
-If the designer named a product (HomePod, HomePod mini, Apple TV, Home app, or any variation) — do not ask which product.
-If the designer named a surface (button, webpage, header, onboarding, marketing) — do not ask which surface.
-Ask only about what is genuinely missing.
-
-Nothing else alongside the question. No answer. No correction. No reasoning. Just the question. Wait.
-
-If context is clear — answer directly. Do not ask.
-
-SURFACES THE GUIDE COVERS
-
-The loaded guide covers both in-product UI copy AND marketing copy for Apple Home products. Do not tell the designer that webpage or marketing copy is outside scope — it is explicitly covered in the guide's marketing annotations section. Surfaces include:
-
-UI surfaces: buttons, labels, navigation, alerts, error states, empty states, onboarding, notifications, tooltips, settings, permission strings.
-
-Marketing surfaces: webpage hero headlines, page headers, subheads, section headings, feature descriptions, product page copy.
-
-If a designer asks for help with a webpage header, hero copy, subhead, or feature description for a Home product — answer using the marketing annotations in the guide.
-
-Before answering a marketing copy request, confirm you know which product it's for. Each Home product has a distinct marketing register:
-- HomePod: premium sound, sensory, audiophile
-- HomePod mini: surprise, accessibility, family, unexpectedly big
-- Apple TV 4K: cinematic, living room, entertainment occasion
-- Home app: control, simplicity, foundation
-
-If the product is named or clearly implied in the current message OR has been established earlier in the conversation — proceed. Do not ask again about something already discussed.
-If the product has genuinely not been mentioned anywhere in the conversation — ask exactly this and stop: "Which Home product is this for — HomePod, HomePod mini, Apple TV 4K, or the Home app?"
-
-When you do have the product and surface, open your response with a brief signal that you're applying marketing conventions. One sentence: "Shifting to marketing register for this one — applying HomePod mini conventions." Then give the copy. Then the brief reason.
-
-WHEN YOU HAVE ENOUGH CONTEXT
-
-Your response must follow this exact order, every time:
-
-1. The corrected copy. First. Nothing before it.
-2. The reason, in one or two plain sentences after.
-
-Exception — marketing surfaces only: When the question is about a marketing surface (webpage header, hero copy, subhead, feature description), open with one sentence signaling the register shift before the copy. Example: "Shifting to marketing register — webpage headers follow different conventions than UI copy." Then give the copy. Then the brief reason.
-
-This order is mandatory. Never lead with the problem. Never lead with a list of issues. Never lead with an explanation. The corrected copy is always the first thing the designer reads — except on marketing surfaces where the register signal comes first.
-
-Correct example:
-"Set up HomeKit. 'Setup' is the noun — the verb is two words. 'HomeKit' is always one word with a capital K."
-
-Incorrect example — do not do this:
-"Two issues here. 'Setup' should be 'set up'... Corrected version: Set up HomeKit."
-
-The incorrect version buries the answer. The corrected copy comes first, always.
-
-For nuanced questions where context changes the answer, offer 2–3 options. For each: write the copy, one sentence on what it prioritizes, one sentence on what it trades off. End with one question that moves the decision forward.
-
-RULES
-Never use markdown tables.
-Never use headers or category labels in responses.
-Never answer before asking if context is missing.
+RULES THAT APPLY TO ALL TYPES
+Never present a single answer as final on a subjective question.
+Never invent rules the guide doesn't contain — flag gaps instead.
+Never silently resolve a conflict between principles — name it.
 Never ask more than one question at a time.
-Keep responses short. Simple questions get simple answers.
-Name the principle briefly — one sentence, not a lecture.
+Always show which principle or guide section you're applying.`;
 
-REFERENCE LINKS
-Only add a link when the designer would benefit from reading more. Format:
-"If you'd like more detail: [section name](URL)"
-
-Available references:
-- HIG: https://developer.apple.com/design/human-interface-guidelines/designing-for-ios
-- HomeKit: https://developer.apple.com/design/human-interface-guidelines/homekit
-- Privacy: https://developer.apple.com/design/human-interface-guidelines/privacy\``;
-
-/**
- * Assembles the full system prompt from its three layers:
- *   1. BASE_PROMPT     — always active, defines core behavior and lookup/explore logic
- *   2. Guide content   — the loaded style guide, injected at runtime
- *   3. Auto prompt     — instructs the agent to infer behavior from the question
- *
- * Mode inference replaces explicit mode switching. The agent reads the question
- * and determines whether it's a lookup (rule exists, state it) or explore
- * (judgment required, offer options). This keeps the human in the loop without
- * requiring them to categorize their own question before asking it.
- *
- * @param {string} mode         — always 'auto'; kept for forward compatibility
- * @param {string} guideName    — display name of the loaded guide
- * @param {string} guideContent — full text content of the loaded guide
- * @returns {string}            — complete system prompt to send to the model
- */
-function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Conflict) {
-  const parts = [
+function buildSystemPrompt(mode, guideName, guideContent) {
+  return [
     BASE_PROMPT,
     `---\n\nSTYLE GUIDE — ${guideName}:\n${guideContent}`,
-  ];
-
-  if (tier2Content) {
-    parts.push(`---\n\nDOMAIN GUIDE (loaded based on content context):\n${tier2Content}`);
-  }
-
-  if (tier2Conflict) {
-    parts.push(`---\n\nCONFLICT NOTE: A potential conflict was detected between the main style guide and the domain guide. Flag this to the designer and ask them to decide. Log the conflict at the end of your response in this format:\n\nCONFLICT FLAGGED: [brief description of the conflict] — needs resolution between [Tier 1 rule] and [Tier 2 rule].`);
-  }
-
-  parts.push(`---\n\n${AUTO_PROMPT}`);
-
-  return parts.join('\n\n');
+    `---\n\n${AUTO_PROMPT}`
+  ].join('\n\n');
 }
-
 </script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /*
-   * Visual design follows Apple Human Interface Guidelines for macOS/iOS.
-   * Key decisions:
-   *   Font:    System font stack — renders San Francisco on Apple devices
-   *   Color:   HIG blue (#0077ED) as key color for interactivity and state
-   *   Grays:   Warm-neutral, matching Apple's system gray palette
-   *   Radius:  10px for surfaces, 8px for controls (HIG continuous curves)
-   *   Weight:  Regular (400) and medium (500) only — HIG spec
-   *   Borders: Minimal — context and color signal interactivity per HIG
-   */
-
   :root {
-    /* Backgrounds — warm neutral, not cool zinc */
     --bg:        #f2f2f7;
     --surface:   #ffffff;
     --surface-2: #f9f9f9;
-    --sidebar-bg:#f5f5f7;
-
-    /* Borders — subtle, single weight */
     --border:    rgba(0,0,0,.1);
     --border-2:  rgba(0,0,0,.18);
-
-    /* Text — Apple system label colors */
     --text:      #1d1d1f;
     --text-2:    #6e6e73;
     --text-3:    #aeaeb2;
-
-    /* Key color — HIG blue, signals interactivity */
     --accent:    #0077ed;
     --accent-bg: #e8f2fd;
     --accent-2:  #0062c4;
-
-    /* Semantic colors */
     --success:   #34c759;
     --success-bg:#edfaf1;
     --danger:    #ff3b30;
     --danger-bg: #fff1f0;
     --warn:      #ff9500;
     --warn-bg:   #fff8ec;
-
-    /* Radii — HIG continuous curve spec */
     --radius:    8px;
     --radius-lg: 10px;
   }
@@ -308,7 +138,6 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
   html, body { height: 100%; }
 
   body {
-    /* System font stack: San Francisco on Apple, Segoe on Windows, etc. */
     font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
     background: var(--bg);
     color: var(--text);
@@ -322,7 +151,6 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* ── Top bar — HIG navigation bar pattern ── */
   .topbar {
     display: flex;
     align-items: center;
@@ -389,38 +217,26 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
   .icon-btn:hover { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
   .icon-btn svg { width: 16px; height: 16px; }
 
-  /* ── Main layout ── */
-  .workspace {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-  }
+  .workspace { display: flex; flex: 1; overflow: hidden; }
 
-  /* Sidebar removed — guide controls live in topbar */
-
-  /* ── Chat area ── */
   .chat-wrap {
     flex: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    background: #fff;
+    background: var(--bg);
   }
-  .chat-scroll { background: #fff; }
   .chat-scroll {
     flex: 1;
     overflow-y: auto;
-    padding: 24px 0 16px;
+    padding: 24px 0;
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: 16px;
+    background: var(--bg);
   }
-  .chat-inner {
-    width: 100%;
-    padding-bottom: 20px;
-  }
+  .chat-inner { max-width: 720px; margin: 0 auto; width: 100%; padding: 0 24px; }
 
-  /* ── Empty state ── */
   .empty-state {
     display: flex;
     flex-direction: column;
@@ -445,92 +261,32 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
   .empty-state h3 { font-size: 15px; font-weight: 500; color: var(--text-2); }
   .empty-state p { font-size: 13px; max-width: 300px; line-height: 1.6; }
 
-  /* ── Messages ── */
-  /* ── Messages — iOS iMessage bubble style ── */
-  .msg {
-    display: flex;
-    align-items: flex-end;
-    margin-bottom: 0;
-    position: relative;
+  .msg { display: flex; gap: 10px; align-items: flex-start; }
+  .msg.user { flex-direction: row-reverse; }
+  .avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600;
+    flex-shrink: 0; margin-top: 2px;
   }
-  .msg.ai-msg  { padding: 0 192px 0 192px; }
-  .msg.user-msg { padding: 0 192px 0 192px; flex-direction: row-reverse; }
-
-  /* Hide avatars */
-  .avatar { display: none; }
-
-  /* Bubble wrapper — needed so SVG tail sits outside the bubble */
-  .bubble-wrap {
-    position: relative;
-    display: inline-flex;
-    max-width: 75%;
-  }
-
-  /* Bubble base */
+  .avatar.ai { background: var(--accent-bg); color: var(--accent); }
+  .avatar.user { background: var(--surface); border: 0.5px solid var(--border); color: var(--text-2); font-size: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
   .bubble {
+    max-width: 85%;
     padding: 10px 14px;
-    font-size: 17px;
-    line-height: 1.35;
-    word-wrap: break-word;
-    position: relative;
-    display: inline-block;
+    border-radius: 18px;
+    font-size: 13px;
+    line-height: 1.65;
   }
-
-  /* AI bubble — left, light gray, tail via pseudo-elements */
   .bubble.ai {
-    background: #e5e5ea;
-    color: #000;
-    border-radius: 18px 18px 18px 4px;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-top-left-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
   }
-  .bubble.ai::before {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: -8px;
-    width: 20px;
-    height: 20px;
-    background: #e5e5ea;
-    border-bottom-right-radius: 50%;
-  }
-  .bubble.ai::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: -26px;
-    width: 26px;
-    height: 20px;
-    background: #fff;
-    border-bottom-right-radius: 14px;
-  }
-
-  /* User bubble — right, blue, tail via pseudo-elements */
-  .bubble.user {
-    background: #007aff;
-    color: #fff;
-    border-radius: 18px 18px 4px 18px;
-  }
-  .bubble.user::before {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    right: -8px;
-    width: 20px;
-    height: 20px;
-    background: #007aff;
-    border-bottom-left-radius: 50%;
-  }
-  .bubble.user::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    right: -26px;
-    width: 26px;
-    height: 20px;
-    background: #fff;
-    border-bottom-left-radius: 14px;
-  }
-
-  .bubble.loading { color: #8e8e93; font-style: normal; }
+  .bubble.user { background: var(--accent); color: #fff; border-top-right-radius: 4px; }
+  .bubble.loading { color: var(--text-3); font-style: italic; }
   .bubble p { margin-bottom: 6px; }
   .bubble p:last-child { margin-bottom: 0; }
   .bubble ul, .bubble ol { padding-left: 1.3em; margin: 6px 0; }
@@ -540,27 +296,20 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
   .bubble hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
   .img-preview { max-width: 240px; border-radius: var(--radius); border: 1px solid var(--border); margin-top: 8px; display: block; }
 
-  /* ── Chips ── */
   .chips-row {
     max-width: 720px; margin: 0 auto; width: 100%;
     padding: 0 24px 12px;
     display: flex; flex-wrap: wrap; gap: 6px;
   }
   .chip {
-    font-size: 12px;
-    padding: 5px 12px;
-    border: 0.5px solid var(--border);
-    border-radius: 20px;
-    background: rgba(255,255,255,.8);
-    color: var(--accent);
-    cursor: pointer;
-    font-family: inherit;
-    transition: background .1s;
-    white-space: nowrap;
+    font-size: 12px; padding: 5px 12px;
+    border: 0.5px solid var(--border); border-radius: 20px;
+    background: rgba(255,255,255,.8); color: var(--accent);
+    cursor: pointer; font-family: inherit;
+    transition: background .1s; white-space: nowrap;
   }
   .chip:hover { background: var(--accent-bg); }
 
-  /* ── Input bar ── */
   .input-bar {
     background: rgba(255,255,255,.9);
     backdrop-filter: saturate(180%) blur(20px);
@@ -568,47 +317,25 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
     border-top: 0.5px solid var(--border);
     padding: 10px 24px 14px;
   }
-  .input-inner {
-    max-width: 720px; margin: 0 auto;
-    display: flex; flex-direction: column; gap: 8px;
-  }
+  .input-inner { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; }
   .input-row { display: flex; gap: 8px; align-items: flex-end; }
   .input-box {
-    flex: 1;
-    padding: 9px 13px;
-    font-size: 13px;
-    font-family: inherit;
-    border: 0.5px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--surface);
-    color: var(--text);
-    resize: none;
-    min-height: 38px;
-    max-height: 120px;
-    line-height: 1.5;
+    flex: 1; padding: 9px 13px; font-size: 13px; font-family: inherit;
+    border: 0.5px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); color: var(--text);
+    resize: none; min-height: 38px; max-height: 120px; line-height: 1.5;
     transition: border-color .15s, box-shadow .15s;
     box-shadow: 0 1px 2px rgba(0,0,0,.04);
   }
-  .input-box:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(0,119,237,.15);
-  }
+  .input-box:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,119,237,.15); }
   .input-box::placeholder { color: var(--text-3); }
   .send-btn {
     height: 38px; padding: 0 16px;
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: var(--radius);
-    font-size: 13px;
-    font-weight: 500;
-    font-family: inherit;
-    cursor: pointer;
-    transition: opacity .12s;
-    white-space: nowrap;
-    flex-shrink: 0;
-    letter-spacing: -.01em;
+    background: var(--accent); color: #fff;
+    border: none; border-radius: var(--radius);
+    font-size: 13px; font-weight: 500; font-family: inherit;
+    cursor: pointer; transition: opacity .12s;
+    white-space: nowrap; flex-shrink: 0; letter-spacing: -.01em;
   }
   .send-btn:hover { opacity: .88; }
   .send-btn:disabled { opacity: .35; cursor: default; }
@@ -616,30 +343,19 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
   .attach-row { display: flex; align-items: center; gap: 8px; }
   .attach-btn {
     display: flex; align-items: center; gap: 5px;
-    font-size: 12px;
-    color: var(--text-2);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 5px 10px;
-    cursor: pointer;
-    font-family: inherit;
-    transition: border-color .12s;
+    font-size: 12px; color: var(--text-2);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 5px 10px;
+    cursor: pointer; font-family: inherit; transition: border-color .12s;
   }
   .attach-btn:hover { border-color: var(--border-2); }
   .attach-btn svg { width: 13px; height: 13px; }
   .img-chip-wrap {
     display: flex; align-items: center; gap: 5px;
-    font-size: 12px;
-    background: var(--success-bg);
-    color: var(--success);
-    border-radius: var(--radius);
-    padding: 4px 9px;
+    font-size: 12px; background: var(--success-bg); color: var(--success);
+    border-radius: var(--radius); padding: 4px 9px;
   }
-  .img-chip-remove {
-    background: none; border: none; cursor: pointer;
-    color: var(--text-3); font-size: 14px; line-height: 1; padding: 0;
-  }
+  .img-chip-remove { background: none; border: none; cursor: pointer; color: var(--text-3); font-size: 14px; line-height: 1; padding: 0; }
   .input-hint { font-size: 11px; color: var(--text-3); letter-spacing: .01em; }
 
   /* ── Modals ── */
@@ -647,22 +363,23 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
     position: fixed; inset: 0;
     background: rgba(0,0,0,.35);
     display: flex; align-items: center; justify-content: center;
-    z-index: 100;
-    backdrop-filter: blur(2px);
+    z-index: 100; backdrop-filter: blur(2px);
   }
   .modal {
     background: rgba(255,255,255,.95);
     backdrop-filter: saturate(200%) blur(30px);
     -webkit-backdrop-filter: saturate(200%) blur(30px);
-    border-radius: var(--radius-lg);
-    border: 0.5px solid var(--border);
-    width: 460px; max-width: 94vw;
+    border-radius: var(--radius-lg); border: 0.5px solid var(--border);
+    width: 480px; max-width: 94vw; max-height: 88vh; overflow-y: auto;
     box-shadow: 0 8px 32px rgba(0,0,0,.14), 0 2px 8px rgba(0,0,0,.06);
-    overflow: hidden;
   }
   .modal-header {
     padding: 18px 20px 0;
     display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0;
+    background: rgba(255,255,255,.95);
+    backdrop-filter: blur(20px);
+    z-index: 1;
   }
   .modal-title { font-size: 15px; font-weight: 600; }
   .modal-close {
@@ -673,14 +390,43 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
     font-size: 18px; line-height: 1;
   }
   .modal-close:hover { background: var(--surface-2); color: var(--text); }
-  .modal-body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .modal-body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 18px; }
+
+  /* ── Preset guide cards ── */
+  .preset-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .preset-card {
+    text-align: left;
+    padding: 11px 13px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color .15s, background .15s;
+  }
+  .preset-card:hover { border-color: var(--border-2); background: var(--surface-2); }
+  .preset-card.selected { border-color: var(--accent); background: var(--accent-bg); }
+  .preset-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .preset-card.selected .preset-name { color: var(--accent); }
+  .preset-desc { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+  .section-label { font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 8px; }
+  .section-divider {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 11px; color: var(--text-3);
+  }
+  .section-divider::before, .section-divider::after {
+    content: ''; flex: 1; height: 0.5px; background: var(--border);
+  }
 
   /* tab row */
   .tab-strip {
-    display: flex;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
+    display: flex; border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
   }
   .tab {
     flex: 1; padding: 7px; font-size: 12px; font-weight: 500;
@@ -703,10 +449,8 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
   .field-hint { font-size: 11px; color: var(--text-3); margin-top: 4px; }
 
   .drop-zone {
-    border: 1.5px dashed var(--border-2);
-    border-radius: var(--radius);
-    padding: 24px; text-align: center;
-    cursor: pointer; color: var(--text-3);
+    border: 1.5px dashed var(--border-2); border-radius: var(--radius);
+    padding: 24px; text-align: center; cursor: pointer; color: var(--text-3);
     font-size: 13px; transition: border-color .12s, background .12s;
   }
   .drop-zone:hover { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
@@ -717,6 +461,9 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
     padding: 14px 20px;
     border-top: 1px solid var(--border);
     display: flex; justify-content: flex-end; gap: 8px;
+    position: sticky; bottom: 0;
+    background: rgba(255,255,255,.95);
+    backdrop-filter: blur(20px);
   }
   .btn-ghost {
     padding: 7px 14px; border: 1px solid var(--border); border-radius: var(--radius);
@@ -727,21 +474,15 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
     padding: 7px 16px; background: var(--accent); color: #fff;
     border: none; border-radius: var(--radius);
     font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer;
-    letter-spacing: -.01em;
-    transition: opacity .12s;
+    letter-spacing: -.01em; transition: opacity .12s;
   }
   .btn-primary:hover { opacity: .88; }
 
   /* ── Settings modal ── */
-  .provider-grid {
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
+  .provider-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .provider-card {
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius);
-    padding: 10px 12px;
-    cursor: pointer;
+    border: 1.5px solid var(--border); border-radius: var(--radius);
+    padding: 10px 12px; cursor: pointer;
     transition: border-color .15s, background .15s;
   }
   .provider-card:hover { border-color: var(--border-2); background: var(--surface-2); }
@@ -759,20 +500,17 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
   .status-row {
     display: flex; align-items: center; gap: 7px;
     font-size: 12px; color: var(--text-2);
-    padding: 8px 11px;
-    border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--surface-2);
+    padding: 8px 11px; border: 1px solid var(--border);
+    border-radius: var(--radius); background: var(--surface-2);
   }
   .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); }
   .status-dot.ok { background: var(--success); }
   .status-dot.err { background: var(--danger); }
 
-  /* scrollbar */
   .chat-scroll::-webkit-scrollbar { width: 4px; }
   .chat-scroll::-webkit-scrollbar-track { background: transparent; }
   .chat-scroll::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 4px; }
 
-  /* notification toast */
   .toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
     background: var(--text); color: #fff;
@@ -819,8 +557,8 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
         <div class="empty-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
         </div>
-        <h3>Loading Apple HIG…</h3>
-        <p>Or use the guide pill above to load any style guide by URL, file, or pasted text.</p>
+        <h3>Loading guide…</h3>
+        <p>Or use the guide picker above to switch guides.</p>
       </div>
       <div id="chat-messages"></div>
     </div>
@@ -856,36 +594,69 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
 <div class="overlay" id="guide-modal" style="display:none" onclick="closeGuideModal(event)">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">Load style guide</div>
+      <div class="modal-title">Switch guide</div>
       <button class="modal-close" onclick="closeGuideModal()">×</button>
     </div>
     <div class="modal-body">
-      <div class="tab-strip">
-        <button class="tab active" id="tab-url" onclick="setGuideTab('url')">URL</button>
-        <button class="tab" id="tab-upload" onclick="setGuideTab('upload')">Upload file</button>
-        <button class="tab" id="tab-paste" onclick="setGuideTab('paste')">Paste text</button>
-      </div>
-      <div id="pane-url">
-        <div class="field-label">Style guide URL</div>
-        <input class="field-input" id="url-input" placeholder="https://…" type="url">
-        <div class="field-hint">The agent will fetch and use the page content as the guide.</div>
-      </div>
-      <div id="pane-upload" style="display:none">
-        <div class="drop-zone" onclick="document.getElementById('file-input').click()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          PDF, DOC, DOCX, or TXT
-          <input type="file" id="file-input" accept=".pdf,.doc,.docx,.txt,.md" style="display:none" onchange="handleFileUpload(event)">
-        </div>
-        <div class="file-selected" id="file-selected" style="display:none"></div>
-      </div>
-      <div id="pane-paste" style="display:none">
-        <div class="field-label">Paste guide content</div>
-        <textarea class="field-input" id="paste-input" placeholder="Paste your style guide content here…"></textarea>
-      </div>
+
+      <!-- Preset guides -->
       <div>
-        <div class="field-label">Guide name (optional)</div>
-        <input class="field-input" id="guide-label-input" placeholder="e.g. Shopify Polaris">
+        <div class="section-label">Apple guides</div>
+        <div class="preset-grid" id="preset-grid">
+          <button class="preset-card" data-file="apple-guidelines.md" data-name="Apple Style Guide" onclick="selectPreset(this)">
+            <div class="preset-name">Apple Style Guide</div>
+            <div class="preset-desc">Editorial rules, UI elements, interaction verbs</div>
+          </button>
+          <button class="preset-card" data-file="apple-terminology.md" data-name="Apple Terminology" onclick="selectPreset(this)">
+            <div class="preset-name">Apple Terminology</div>
+            <div class="preset-desc">Complete A–Z style guide dictionary</div>
+          </button>
+          <button class="preset-card" data-file="apple-homekit.md" data-name="Apple HomeKit" onclick="selectPreset(this)">
+            <div class="preset-name">HomeKit</div>
+            <div class="preset-desc">Terminology, setup, naming, Siri guidance</div>
+          </button>
+          <button class="preset-card" data-file="apple-privacy.md" data-name="Apple Privacy" onclick="selectPreset(this)">
+            <div class="preset-name">Privacy</div>
+            <div class="preset-desc">Permissions, purpose strings, data protection</div>
+          </button>
+          <button class="preset-card" data-file="apple-home-voice-tone.md" data-name="Apple Home — Voice and Tone" onclick="selectPreset(this)">
+            <div class="preset-name">Home — Voice &amp; Tone</div>
+            <div class="preset-desc">Voice, tone, and marketing for Apple Home</div>
+          </button>
+        </div>
       </div>
+
+      <!-- Divider -->
+      <div class="section-divider">or load a custom guide</div>
+
+      <!-- Custom guide tabs -->
+      <div>
+        <div class="tab-strip">
+          <button class="tab active" id="tab-url" onclick="setGuideTab('url')">URL</button>
+          <button class="tab" id="tab-upload" onclick="setGuideTab('upload')">Upload file</button>
+          <button class="tab" id="tab-paste" onclick="setGuideTab('paste')">Paste text</button>
+        </div>
+        <div id="pane-url" style="margin-top:10px">
+          <input class="field-input" id="url-input" placeholder="https://…" type="url">
+          <div class="field-hint">The agent will use the page content as the guide.</div>
+        </div>
+        <div id="pane-upload" style="display:none;margin-top:10px">
+          <div class="drop-zone" onclick="document.getElementById('file-input').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            PDF, DOC, DOCX, or TXT
+            <input type="file" id="file-input" accept=".pdf,.doc,.docx,.txt,.md" style="display:none" onchange="handleFileUpload(event)">
+          </div>
+          <div class="file-selected" id="file-selected" style="display:none"></div>
+        </div>
+        <div id="pane-paste" style="display:none;margin-top:10px">
+          <textarea class="field-input" id="paste-input" placeholder="Paste your style guide content here…"></textarea>
+        </div>
+        <div style="margin-top:10px">
+          <div class="field-label">Guide name (optional)</div>
+          <input class="field-input" id="guide-label-input" placeholder="e.g. Shopify Polaris">
+        </div>
+      </div>
+
     </div>
     <div class="modal-footer">
       <button class="btn-ghost" onclick="closeGuideModal()">Cancel</button>
@@ -929,7 +700,7 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
           <input class="field-input" id="api-key-input" type="password" placeholder="Paste your API key here">
           <button class="toggle-vis" onclick="toggleKeyVis()">Show</button>
         </div>
-        <div class="field-hint">Your key is stored only in this browser session — it's never sent anywhere except the provider's API.</div>
+        <div class="field-hint">Your key is stored only in this browser session — never sent anywhere except the provider's API.</div>
       </div>
       <div class="status-row">
         <div class="status-dot" id="status-dot"></div>
@@ -946,8 +717,6 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
 <div class="toast" id="toast"></div>
 
 <script>
-// ── LLM Provider configs ──────────────────────────────────────────────────────
-
 const PROVIDERS = {
   anthropic: {
     name: 'Anthropic',
@@ -958,8 +727,8 @@ const PROVIDERS = {
       'anthropic-version': '2023-06-01',
       'anthropic-dangerous-direct-browser-access': 'true'
     }),
-    buildBody: (messages, system, model) => ({
-      model: model || 'claude-sonnet-4-6',
+    buildBody: (messages, system) => ({
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: system,
       messages: messages
@@ -972,14 +741,8 @@ const PROVIDERS = {
   openai: {
     name: 'OpenAI',
     endpoint: 'https://api.openai.com/v1/chat/completions',
-    headers: (key) => ({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${key}`
-    }),
-    buildBody: (messages, system, model) => ({
-      model: model || 'gpt-4o',
-      messages: [{ role: 'system', content: system }, ...messages]
-    }),
+    headers: (key) => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }),
+    buildBody: (messages, system) => ({ model: 'gpt-4o', messages: [{ role: 'system', content: system }, ...messages] }),
     parseResponse: (data) => {
       if (data.error) throw new Error(data.error.message);
       return data.choices?.[0]?.message?.content || '';
@@ -989,14 +752,12 @@ const PROVIDERS = {
     name: 'Google Gemini',
     endpoint: (key) => `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${key}`,
     headers: () => ({ 'Content-Type': 'application/json' }),
-    buildBody: (messages, system, model) => ({
+    buildBody: (messages, system) => ({
       system_instruction: { parts: [{ text: system }] },
       contents: messages.map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: Array.isArray(m.content)
-          ? m.content.map(c => c.type === 'image'
-              ? { inline_data: { mime_type: 'image/png', data: c.source.data } }
-              : { text: c.text })
+          ? m.content.map(c => c.type === 'image' ? { inline_data: { mime_type: 'image/png', data: c.source.data } } : { text: c.text })
           : [{ text: m.content }]
       }))
     }),
@@ -1008,17 +769,12 @@ const PROVIDERS = {
   mistral: {
     name: 'Mistral',
     endpoint: 'https://api.mistral.ai/v1/chat/completions',
-    headers: (key) => ({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${key}`
-    }),
-    buildBody: (messages, system, model) => ({
-      model: model || 'mistral-large-latest',
+    headers: (key) => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }),
+    buildBody: (messages, system) => ({
+      model: 'mistral-large-latest',
       messages: [{ role: 'system', content: system }, ...messages.map(m => ({
         role: m.role,
-        content: Array.isArray(m.content)
-          ? m.content.filter(c => c.type === 'text').map(c => c.text).join(' ')
-          : m.content
+        content: Array.isArray(m.content) ? m.content.filter(c => c.type === 'text').map(c => c.text).join(' ') : m.content
       }))]
     }),
     parseResponse: (data) => {
@@ -1028,49 +784,36 @@ const PROVIDERS = {
   }
 };
 
-// ── App state ─────────────────────────────────────────────────────────────────
-
 let state = {
   provider: 'anthropic',
   apiKey: '',
   guideContent: '',
   guideName: '',
-  tier2Content: '',      // loaded when domain is detected
-  tier2Name: '',         // name of loaded Tier 2 doc
   messages: [],
   pendingImgB64: null,
   guideTab: 'url',
-  pendingFile: null
+  pendingFile: null,
+  selectedPreset: null
 };
 
-// BASE_PROMPT, MODE_PROMPTS, and buildSystemPrompt are loaded from prompts.js
-
-// Universal chips — each demonstrates a different behavior without labeling it
 const UNIVERSAL_CHIPS = [
   'What does this guide cover?',
-  'What’s the rule for button labels?',
+  "What's the rule for button labels?",
   'Help me write an error message',
   'Write options for a destructive action warning',
   'Check this copy for violations',
   'How should dates be formatted?'
 ];
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-
-// Mode is always 'auto' — the agent infers from the question
-function getSystemPrompt(tier2Content, tier2Conflict) {
-  return buildSystemPrompt('auto', state.guideName, state.guideContent, tier2Content || '', tier2Conflict || false);
+function getSystemPrompt() {
+  return buildSystemPrompt('auto', state.guideName, state.guideContent);
 }
-
-// ── Chips ─────────────────────────────────────────────────────────────────────
 
 function renderChips() {
   const row = document.getElementById('chips-row');
   if (!state.guideContent) { row.style.display = 'none'; return; }
   row.style.display = 'flex';
-  row.innerHTML = UNIVERSAL_CHIPS
-    .map(c => `<button class="chip" onclick="useChip(this)">${c}</button>`)
-    .join('');
+  row.innerHTML = UNIVERSAL_CHIPS.map(c => `<button class="chip" onclick="useChip(this)">${c}</button>`).join('');
 }
 
 function useChip(el) {
@@ -1080,30 +823,37 @@ function useChip(el) {
   box.focus();
 }
 
-// ── Guide loading ─────────────────────────────────────────────────────────────
+// ── Preset guide selection ──
 
-async function loadDefaultGuide() {
-  try {
-    const res = await fetch('./guides/apple-guidelines.md');
-    if (!res.ok) throw new Error('File not found');
-    const text = await res.text();
-    applyGuide(text, 'Apple Guidelines');
-  } catch(e) {
-    applyGuide(EMBEDDED_HIG, 'Apple Guidelines');
-  }
-  showToast('Apple HIG — iOS loaded');
+function selectPreset(el) {
+  document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  state.selectedPreset = { file: el.dataset.file, name: el.dataset.name };
 }
+
+// ── Guide loading ──
 
 function openGuideModal() {
+  // Highlight the currently active guide
+  if (state.guideName) {
+    document.querySelectorAll('.preset-card').forEach(c => {
+      c.classList.toggle('selected', c.dataset.name === state.guideName);
+    });
+  }
   document.getElementById('guide-modal').style.display = 'flex';
 }
+
 function closeGuideModal(e) {
   if (!e || e.target === document.getElementById('guide-modal')) {
     document.getElementById('guide-modal').style.display = 'none';
+    state.selectedPreset = null;
   }
 }
 
 function setGuideTab(t) {
+  // Selecting a custom tab clears preset selection
+  state.selectedPreset = null;
+  document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('selected'));
   state.guideTab = t;
   ['url','upload','paste'].forEach(x => {
     document.getElementById('tab-'+x).classList.toggle('active', x === t);
@@ -1126,6 +876,22 @@ function handleFileUpload(e) {
 }
 
 async function loadGuide() {
+  // Preset takes priority if one is selected
+  if (state.selectedPreset) {
+    try {
+      const res = await fetch(`./guides/${state.selectedPreset.file}`);
+      if (!res.ok) throw new Error('not found');
+      const text = await res.text();
+      applyGuide(text, state.selectedPreset.name);
+      closeGuideModal();
+      showToast(`${state.selectedPreset.name} loaded`);
+    } catch(e) {
+      showToast('Could not load guide file');
+    }
+    return;
+  }
+
+  // Custom guide
   let content = '', name = '';
   const labelInput = document.getElementById('guide-label-input').value.trim();
 
@@ -1153,6 +919,7 @@ function applyGuide(content, name) {
   state.guideContent = content;
   state.guideName = name;
   state.messages = [];
+  state.selectedPreset = null;
 
   document.getElementById('guide-dot').classList.add('active');
   document.getElementById('guide-name-pill').textContent = name;
@@ -1163,7 +930,7 @@ function applyGuide(content, name) {
   addMessage('ai', `**${name}** loaded. Ask a question, look up a rule, describe a UX problem, or upload a screenshot — I'll figure out the best way to help.`);
 }
 
-// ── Settings ──────────────────────────────────────────────────────────────────
+// ── Settings ──
 
 function openSettings() {
   document.getElementById('api-key-input').value = state.apiKey;
@@ -1175,25 +942,21 @@ function closeSettings(e) {
     document.getElementById('settings-modal').style.display = 'none';
   }
 }
-
 function selectProvider(p) {
   state.provider = p;
   document.querySelectorAll('.provider-card').forEach(c => {
     c.classList.toggle('selected', c.dataset.provider === p);
   });
 }
-
 function toggleKeyVis() {
   const inp = document.getElementById('api-key-input');
   const btn = inp.nextElementSibling;
   if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'Hide'; }
   else { inp.type = 'password'; btn.textContent = 'Show'; }
 }
-
 function saveSettings() {
   state.apiKey = document.getElementById('api-key-input').value.trim();
   state.provider = state.provider || 'anthropic';
-  // Persist across page interactions
   try {
     sessionStorage.setItem('cda_api_key', state.apiKey);
     sessionStorage.setItem('cda_provider', state.provider);
@@ -1202,21 +965,15 @@ function saveSettings() {
   closeSettings();
   showToast('Settings saved');
 }
-
 function updateStatusRow() {
   const dot = document.getElementById('status-dot');
   const txt = document.getElementById('status-text');
   const key = document.getElementById('api-key-input').value.trim();
-  if (key) {
-    dot.className = 'status-dot ok';
-    txt.textContent = `${PROVIDERS[state.provider]?.name || state.provider} · key set`;
-  } else {
-    dot.className = 'status-dot';
-    txt.textContent = 'No API key set';
-  }
+  if (key) { dot.className = 'status-dot ok'; txt.textContent = `${PROVIDERS[state.provider]?.name || state.provider} · key set`; }
+  else { dot.className = 'status-dot'; txt.textContent = 'No API key set'; }
 }
 
-// ── Chat ──────────────────────────────────────────────────────────────────────
+// ── Chat ──
 
 function addMessage(role, text, imgB64) {
   const container = document.getElementById('chat-messages');
@@ -1226,7 +983,7 @@ function addMessage(role, text, imgB64) {
   wrap.className = 'chat-inner';
 
   const msg = document.createElement('div');
-  msg.className = `msg ${role} ${role === 'ai' ? 'ai-msg' : 'user-msg'}`;
+  msg.className = `msg ${role}`;
 
   const av = document.createElement('div');
   av.className = `avatar ${role}`;
@@ -1249,9 +1006,7 @@ function addMessage(role, text, imgB64) {
   wrap.appendChild(msg);
   container.appendChild(wrap);
 
-  const scroll = document.getElementById('chat-scroll');
-  scroll.scrollTop = scroll.scrollHeight;
-
+  document.getElementById('chat-scroll').scrollTop = 999999;
   return bubble;
 }
 
@@ -1304,41 +1059,9 @@ async function send() {
   }
   if (text) userContent.push({ type: 'text', text });
 
-  const msgContent = userContent.length === 1 && userContent[0].type === 'text'
-    ? text : userContent;
-
+  const msgContent = userContent.length === 1 && userContent[0].type === 'text' ? text : userContent;
   state.messages.push({ role: 'user', content: msgContent });
   clearImg();
-
-  // ── Tier 2 domain detection ──────────────────────────────────────────────
-  let tier2Content = state.tier2Content || '';
-  let tier2Conflict = false;
-  let domainDetected = false;
-
-  if (text && typeof detectDomain === 'function') {
-    const domain = detectDomain(text);
-
-    if (domain === 'home' && !state.tier2Content) {
-      // Clear signal — load Home Tier 2 doc silently
-      try {
-        const t2res = await fetch('./guides/apple-home-voice-tone.md');
-        if (t2res.ok) {
-          state.tier2Content = await t2res.text();
-          state.tier2Name = 'Apple Home Voice and Tone';
-          tier2Content = state.tier2Content;
-          domainDetected = true;
-          showToast('Home voice and tone guide loaded');
-        }
-      } catch(e) {}
-    } else if (domain === 'ambiguous' && !state.tier2Content) {
-      // Ambiguous signal — ask which product before loading
-      const clarifyMsg = 'Which Apple Home product is this for — HomePod, HomePod mini, Apple TV, or the Home app? That\'ll help me load the right guidance.';
-      addMessage('ai', clarifyMsg);
-      document.getElementById('send-btn').disabled = false;
-      return;
-    }
-  }
-  // ────────────────────────────────────────────────────────────────────────
 
   const loadBubble = addMessage('ai', '_Thinking…_');
   loadBubble.classList.add('loading');
@@ -1346,23 +1069,17 @@ async function send() {
 
   try {
     const provider = PROVIDERS[state.provider];
-    const endpoint = typeof provider.endpoint === 'function'
-      ? provider.endpoint(state.apiKey)
-      : provider.endpoint;
-
+    const endpoint = typeof provider.endpoint === 'function' ? provider.endpoint(state.apiKey) : provider.endpoint;
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: provider.headers(state.apiKey),
-      body: JSON.stringify(provider.buildBody(state.messages, getSystemPrompt(tier2Content, tier2Conflict)))
+      body: JSON.stringify(provider.buildBody(state.messages, getSystemPrompt()))
     });
-
     const data = await res.json();
     const reply = provider.parseResponse(data);
-
     state.messages.push({ role: 'assistant', content: reply });
     loadBubble.classList.remove('loading');
     loadBubble.innerHTML = renderMarkdown(reply);
-
   } catch(err) {
     loadBubble.classList.remove('loading');
     loadBubble.innerHTML = `<span style="color:var(--danger)">Error: ${err.message || 'Something went wrong. Check your API key and try again.'}</span>`;
@@ -1382,17 +1099,13 @@ function clearChat() {
   }
 }
 
-// ── Utils ─────────────────────────────────────────────────────────────────────
-
 function handleKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
 }
-
 function autoResize(el) {
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 120) + 'px';
 }
-
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -1400,32 +1113,10 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2200);
 }
 
-// ── Embedded HIG fallback (used if guides/apple-hig.md can't be fetched) ─────
-
 const EMBEDDED_HIG = `# Apple Human Interface Guidelines — iOS
 
 ## Core Design Themes
-
-### Deference
-The UI helps users understand and interact with the content, but never competes with it.
-- Take advantage of the whole screen.
-- Reconsider bezels, gradients, and drop shadows — they can overpower content.
-- Let translucent UI elements hint at the content behind them.
-
-### Clarity
-Text is legible at every size, icons are precise and lucid, adornments are subtle.
-- Use plenty of negative space.
-- Let color simplify the UI — a key color highlights important state.
-- Use Dynamic Type so apps respond to user text-size choices.
-- Embrace borderless buttons.
-
-### Depth
-Visual layers and realistic motion impart vitality and heighten understanding.
-- Use distinct layers to convey hierarchy and position.
-- Use enhanced transitions to give users a sense of hierarchy.
-
-## Design Principles
-Aesthetic Integrity, Consistency, Direct Manipulation, Feedback, Metaphors, User Control.
+Deference, Clarity, Depth.
 
 ## Terminology and Wording
 - Informal and friendly tone, never stilted or falsely jovial.
@@ -1436,42 +1127,17 @@ Aesthetic Integrity, Consistency, Direct Manipulation, Feedback, Metaphors, User
 ## Buttons and Controls
 - Verb-first, short labels.
 - No "Click here" or "Tap to…".
-- Borderless buttons use context, color, and call-to-action title to signal interactivity.
 
 ## Alerts
 - Reserve alerts for essential, ideally actionable, information.
-- Avoid unnecessary alerts — overuse teaches users to ignore them.
-
-## Starting and Stopping
-- Start instantly. Don't show splash screens.
-- Delay login requirements as long as possible.
-- Never display a Close or Quit option.
-- Never tell users to reboot or restart.
+- Avoid unnecessary alerts.
 
 ## Navigation
-Three styles: Hierarchical, Flat, Content/experience-driven.
-Use navigation bar for hierarchy, tab bar for peer categories.
+Three styles: Hierarchical, Flat, Content/experience-driven.`;
 
-## Layout
-- Hit targets: 44x44 points minimum.
-- Principal items in upper half and left side of screen.
-- Use visual weight and alignment to show hierarchy.
-
-## Color
-- Key color indicates interactivity and state.
-- Don't use same color for interactive and noninteractive elements.
-- Minimum 50% contrast between distinguishable colors.
-- Be aware of color blindness.
-
-## Typography
-- Adopt Dynamic Type. Text never below 11pt.
-- Use a single font family throughout.
-- Regular or medium weight only — not light or bold.`;
-
-// ── Boot ──────────────────────────────────────────────────────────────────────
+// ── Boot ──
 
 async function boot() {
-  // Restore API key and provider from session if available
   try {
     const savedKey = sessionStorage.getItem('cda_api_key');
     const savedProvider = sessionStorage.getItem('cda_provider');
@@ -1486,30 +1152,13 @@ async function boot() {
 
   renderChips();
 
-  // Show a subtle loading state while the guide fetches
-  const empty = document.getElementById('empty-state');
-  if (empty) empty.querySelector('p').textContent = 'Loading Apple Home guidelines…';
-
   try {
-    // Fetch both guides in parallel — guidelines + voice and tone
-    const [guidelinesRes, voiceToneRes] = await Promise.all([
-      fetch('./guides/apple-guidelines.md'),
-      fetch('./guides/apple-home-voice-tone.md')
-    ]);
-
-    if (!guidelinesRes.ok) throw new Error('guidelines not found');
-
-    const guidelinesText = await guidelinesRes.text();
-    const voiceToneText = voiceToneRes.ok ? await voiceToneRes.text() : '';
-
-    const combined = voiceToneText
-      ? guidelinesText + '\n\n---\n\n' + voiceToneText
-      : guidelinesText;
-
-    applyGuide(combined, 'Apple Home Guidelines');
+    const res = await fetch('./guides/apple-guidelines.md');
+    if (!res.ok) throw new Error('not found');
+    const text = await res.text();
+    applyGuide(text, 'Apple Style Guide');
   } catch(e) {
-    // Fallback: embedded HIG content
-    applyGuide(EMBEDDED_HIG, 'Apple Home Guidelines');
+    applyGuide(EMBEDDED_HIG, 'Apple HIG');
   }
 }
 
