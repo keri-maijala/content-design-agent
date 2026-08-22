@@ -196,11 +196,26 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
   .send-btn { height: 38px; padding: 0 16px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer; transition: opacity .12s; white-space: nowrap; flex-shrink: 0; }
   .send-btn:hover { opacity: .88; }
   .send-btn:disabled { opacity: .35; cursor: default; }
-  .attach-row { display: flex; align-items: center; gap: 8px; }
-  .attach-btn { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 10px; cursor: pointer; font-family: inherit; }
+  .attach-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .attach-btn { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 10px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
   .attach-btn svg { width: 13px; height: 13px; }
-  .img-chip-wrap { display: flex; align-items: center; gap: 5px; font-size: 12px; background: var(--success-bg); color: var(--success); border-radius: var(--radius); padding: 4px 9px; }
-  .img-chip-remove { background: none; border: none; cursor: pointer; color: var(--text-3); font-size: 14px; line-height: 1; padding: 0; }
+  .attach-btn.disabled { opacity: .4; cursor: default; pointer-events: none; }
+  .img-thumbnails { display: flex; flex-wrap: wrap; gap: 6px; }
+  .img-thumb {
+    position: relative; width: 48px; height: 48px;
+    border-radius: var(--radius); overflow: hidden;
+    border: 1px solid var(--border); flex-shrink: 0;
+  }
+  .img-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .img-thumb-remove {
+    position: absolute; top: 2px; right: 2px;
+    width: 16px; height: 16px;
+    background: rgba(0,0,0,.55); color: #fff;
+    border: none; border-radius: 50%; cursor: pointer;
+    font-size: 11px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0;
+  }
   .input-hint { font-size: 11px; color: var(--text-3); }
 
   /* Settings modal */
@@ -275,17 +290,13 @@ function buildSystemPrompt(mode, guideName, guideContent, tier2Content, tier2Con
     <div class="chips-row" id="chips-row" style="display:none"></div>
     <div class="input-bar">
       <div class="input-inner">
-        <div class="attach-row">
-          <label class="attach-btn">
+        <div class="attach-row" id="attach-row">
+          <label class="attach-btn" id="attach-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             Screenshot
             <input type="file" accept="image/*" style="display:none" id="img-input" onchange="handleImg(event)">
           </label>
-          <div class="img-chip-wrap" id="img-chip" style="display:none">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <span id="img-chip-name">image.png</span>
-            <button class="img-chip-remove" onclick="clearImg()">x</button>
-          </div>
+          <div class="img-thumbnails" id="img-thumbnails"></div>
         </div>
         <div class="input-row">
           <textarea class="input-box" id="input-box" placeholder="Ask about the style guide, look up a rule, or describe a UX problem..." rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
@@ -383,7 +394,7 @@ let state = {
   provider: 'anthropic', apiKey: '',
   guideContent: '', guideName: '',
   tier2Content: '', tier2Name: '',
-  messages: [], pendingImgB64: null, pendingImgMime: null, pendingFile: null
+  messages: [], pendingImgs: [], pendingFile: null  // pendingImgs: [{b64, mime, name}]
 };
 
 const UNIVERSAL_CHIPS = [
@@ -459,7 +470,7 @@ function updateStatusRow() {
   else { dot.className = 'status-dot'; txt.textContent = 'No API key set'; }
 }
 
-function addMessage(role, text, imgB64) {
+function addMessage(role, text, imgB64, imgMime, imgCount) {
   const container = document.getElementById('chat-messages');
   document.getElementById('empty-state').style.display = 'none';
   const wrap = document.createElement('div');
@@ -471,12 +482,23 @@ function addMessage(role, text, imgB64) {
   const bubble = document.createElement('div');
   bubble.className = 'bubble ' + role;
   bubble.innerHTML = renderMarkdown(text);
+  // Show first image preview; if multiple, show count badge
   if (imgB64) {
+    const imgWrap = document.createElement('div');
+    imgWrap.style.cssText = 'position:relative;display:inline-block;margin-top:8px;';
     const img = document.createElement('img');
-    img.src = 'data:' + (state.pendingImgMime || 'image/jpeg') + ';base64,' + imgB64;
+    img.src = 'data:' + (imgMime || 'image/jpeg') + ';base64,' + imgB64;
     img.className = 'img-preview';
-    img.alt = 'Uploaded screenshot';
-    bubble.appendChild(img);
+    img.alt = 'Uploaded image';
+    img.style.marginTop = '0';
+    imgWrap.appendChild(img);
+    if (imgCount && imgCount > 1) {
+      const badge = document.createElement('div');
+      badge.style.cssText = 'position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:600;padding:2px 6px;border-radius:10px;';
+      badge.textContent = '+' + (imgCount - 1) + ' more';
+      imgWrap.appendChild(badge);
+    }
+    bubble.appendChild(imgWrap);
   }
   msg.appendChild(av);
   msg.appendChild(bubble);
@@ -502,41 +524,76 @@ function renderMarkdown(text) {
 function handleImg(e) {
   const f = e.target.files[0];
   if (!f) return;
-  state.pendingImgMime = f.type || 'image/png';
+  if (state.pendingImgs.length >= 5) return;
+  const mime = f.type || 'image/jpeg';
   const reader = new FileReader();
   reader.onload = ev => {
-    state.pendingImgB64 = ev.target.result.split(',')[1];
-    document.getElementById('img-chip-name').textContent = f.name;
-    document.getElementById('img-chip').style.display = 'flex';
+    const b64 = ev.target.result.split(',')[1];
+    state.pendingImgs.push({ b64, mime, name: f.name });
+    renderThumbnails();
   };
   reader.readAsDataURL(f);
-}
-function clearImg() {
-  state.pendingImgB64 = null;
-  state.pendingImgMime = null;
-  document.getElementById('img-chip').style.display = 'none';
+  // Reset input so same file can be re-selected if needed
   document.getElementById('img-input').value = '';
+}
+
+function renderThumbnails() {
+  const container = document.getElementById('img-thumbnails');
+  const btn = document.getElementById('attach-btn');
+  container.innerHTML = '';
+  state.pendingImgs.forEach((img, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'img-thumb';
+    const el = document.createElement('img');
+    el.src = 'data:' + img.mime + ';base64,' + img.b64;
+    el.alt = img.name;
+    const rm = document.createElement('button');
+    rm.className = 'img-thumb-remove';
+    rm.textContent = 'x';
+    rm.onclick = () => { state.pendingImgs.splice(i, 1); renderThumbnails(); };
+    wrap.appendChild(el);
+    wrap.appendChild(rm);
+    container.appendChild(wrap);
+  });
+  // Disable attach button at 5 images
+  if (state.pendingImgs.length >= 5) { btn.classList.add('disabled'); }
+  else { btn.classList.remove('disabled'); }
+}
+
+function clearImgs() {
+  state.pendingImgs = [];
+  renderThumbnails();
 }
 
 async function send() {
   const box = document.getElementById('input-box');
   const text = box.value.trim();
-  if (!text && !state.pendingImgB64) return;
+  if (!text && state.pendingImgs.length === 0) return;
   if (!state.apiKey) { openSettings(); return; }
 
-  const userText = text || '(screenshot attached)';
-  addMessage('user', userText, state.pendingImgB64);
+  const imgCount = state.pendingImgs.length;
+  const userText = text || (imgCount === 1 ? '(image attached)' : '(' + imgCount + ' images attached)');
+  addMessage('user', userText, state.pendingImgs.length > 0 ? state.pendingImgs[0].b64 : null, state.pendingImgs.length > 0 ? state.pendingImgs[0].mime : null, state.pendingImgs.length);
   box.value = '';
   autoResize(box);
 
   const userContent = [];
-  if (state.pendingImgB64 && state.provider !== 'mistral') {
-    userContent.push({ type: 'image', source: { type: 'base64', media_type: state.pendingImgMime || 'image/jpeg', data: state.pendingImgB64 } });
+  if (state.pendingImgs.length > 0 && state.provider !== 'mistral') {
+    state.pendingImgs.forEach(img => {
+      userContent.push({ type: 'image', source: { type: 'base64', media_type: img.mime, data: img.b64 } });
+    });
   }
   if (text) userContent.push({ type: 'text', text });
-  const msgContent = userContent.length === 1 && userContent[0].type === 'text' ? text : userContent;
+  // If no text and images uploaded, inject context-request instruction
+  if (state.pendingImgs.length > 0 && !text) {
+    const contextHint = state.pendingImgs.length > 1
+      ? 'The user has uploaded ' + state.pendingImgs.length + ' images without context. Ask them: are these a flow (sequential screens) or a comparison? If a flow, ask if the upload order reflects the order they appear. Do not analyze the images yet — wait for the answer.'
+      : 'The user has uploaded an image without context. Ask one question: what would they like you to look at or evaluate? Do not analyze yet — wait for the answer.';
+    userContent.push({ type: 'text', text: '[SYSTEM NOTE: ' + contextHint + ']' });
+  }
+  const msgContent = userContent.length === 1 && userContent[0].type === 'text' && !state.pendingImgs.length ? text : userContent;
   state.messages.push({ role: 'user', content: msgContent });
-  clearImg();
+  clearImgs();
 
   let tier2Content = state.tier2Content || '';
   let tier2Conflict = false;
@@ -583,6 +640,7 @@ function clearChat() {
   state.messages = [];
   state.tier2Content = '';
   state.tier2Name = '';
+  clearImgs();
   document.getElementById('chat-messages').innerHTML = '';
   if (state.guideContent) { addMessage('ai', 'Conversation cleared. Ask away.'); }
   else { document.getElementById('empty-state').style.display = 'flex'; }
