@@ -367,7 +367,7 @@ const PROVIDERS = {
     name: 'Google Gemini',
     endpoint: (key) => 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=' + key,
     headers: () => ({ 'Content-Type': 'application/json' }),
-    buildBody: (messages, system) => ({ system_instruction: { parts: [{ text: system }] }, contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: Array.isArray(m.content) ? m.content.map(c => c.type === 'image' ? { inline_data: { mime_type: 'image/png', data: c.source.data } } : { text: c.text }) : [{ text: m.content }] })) }),
+    buildBody: (messages, system) => ({ system_instruction: { parts: [{ text: system }] }, contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: Array.isArray(m.content) ? m.content.map(c => c.type === 'image' ? { inline_data: { mime_type: c.source.media_type || 'image/jpeg', data: c.source.data } } : { text: c.text }) : [{ text: m.content }] })) }),
     parseResponse: (data) => { if (data.error) throw new Error(data.error.message); return data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || ''; }
   },
   mistral: {
@@ -383,7 +383,7 @@ let state = {
   provider: 'anthropic', apiKey: '',
   guideContent: '', guideName: '',
   tier2Content: '', tier2Name: '',
-  messages: [], pendingImgB64: null, pendingFile: null
+  messages: [], pendingImgB64: null, pendingImgMime: null, pendingFile: null
 };
 
 const UNIVERSAL_CHIPS = [
@@ -473,7 +473,7 @@ function addMessage(role, text, imgB64) {
   bubble.innerHTML = renderMarkdown(text);
   if (imgB64) {
     const img = document.createElement('img');
-    img.src = 'data:image/png;base64,' + imgB64;
+    img.src = 'data:' + (state.pendingImgMime || 'image/jpeg') + ';base64,' + imgB64;
     img.className = 'img-preview';
     img.alt = 'Uploaded screenshot';
     bubble.appendChild(img);
@@ -502,6 +502,7 @@ function renderMarkdown(text) {
 function handleImg(e) {
   const f = e.target.files[0];
   if (!f) return;
+  state.pendingImgMime = f.type || 'image/png';
   const reader = new FileReader();
   reader.onload = ev => {
     state.pendingImgB64 = ev.target.result.split(',')[1];
@@ -512,6 +513,7 @@ function handleImg(e) {
 }
 function clearImg() {
   state.pendingImgB64 = null;
+  state.pendingImgMime = null;
   document.getElementById('img-chip').style.display = 'none';
   document.getElementById('img-input').value = '';
 }
@@ -529,7 +531,7 @@ async function send() {
 
   const userContent = [];
   if (state.pendingImgB64 && state.provider !== 'mistral') {
-    userContent.push({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: state.pendingImgB64 } });
+    userContent.push({ type: 'image', source: { type: 'base64', media_type: state.pendingImgMime || 'image/jpeg', data: state.pendingImgB64 } });
   }
   if (text) userContent.push({ type: 'text', text });
   const msgContent = userContent.length === 1 && userContent[0].type === 'text' ? text : userContent;
@@ -567,6 +569,8 @@ async function send() {
     loadBubble.classList.remove('loading');
     loadBubble.innerHTML = renderMarkdown(reply);
   } catch(err) {
+    // Remove the failed user message so conversation can recover
+    state.messages.pop();
     loadBubble.classList.remove('loading');
     loadBubble.innerHTML = '<span style="color:var(--danger)">Error: ' + (err.message || 'Something went wrong. Check your API key and try again.') + '</span>';
   }
