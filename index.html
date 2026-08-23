@@ -507,7 +507,7 @@ function updateStatusRow() {
   else { dot.className = 'status-dot'; txt.textContent = 'No API key set'; }
 }
 
-function addMessage(role, text, imgB64, imgMime, imgCount) {
+function addMessage(role, text, imgB64, imgMime, imgCount, imgAllSrcs) {
   const container = document.getElementById('chat-messages');
   document.getElementById('empty-state').style.display = 'none';
   const wrap = document.createElement('div');
@@ -519,23 +519,20 @@ function addMessage(role, text, imgB64, imgMime, imgCount) {
   const bubble = document.createElement('div');
   bubble.className = 'bubble ' + role;
   bubble.innerHTML = renderMarkdown(text);
-  // Show first image preview; if multiple, show count badge
+  // Show all uploaded images as a flex grid
   if (imgB64) {
-    const imgWrap = document.createElement('div');
-    imgWrap.style.cssText = 'position:relative;display:inline-block;margin-top:8px;';
-    const img = document.createElement('img');
-    img.src = 'data:' + (imgMime || 'image/jpeg') + ';base64,' + imgB64;
-    img.className = 'img-preview';
-    img.alt = 'Uploaded image';
-    img.style.marginTop = '0';
-    imgWrap.appendChild(img);
-    if (imgCount && imgCount > 1) {
-      const badge = document.createElement('div');
-      badge.style.cssText = 'position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:600;padding:2px 6px;border-radius:10px;';
-      badge.textContent = '+' + (imgCount - 1) + ' more';
-      imgWrap.appendChild(badge);
-    }
-    bubble.appendChild(imgWrap);
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;';
+    // imgB64 is the first image; allImgs carries the full set when available
+    const srcs = (imgAllSrcs && imgAllSrcs.length) ? imgAllSrcs : [{ b64: imgB64, mime: imgMime || 'image/jpeg' }];
+    srcs.forEach((src, i) => {
+      const img = document.createElement('img');
+      img.src = 'data:' + src.mime + ';base64,' + src.b64;
+      img.alt = 'Uploaded image ' + (i + 1);
+      img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid var(--border);display:block;';
+      grid.appendChild(img);
+    });
+    bubble.appendChild(grid);
   }
   msg.appendChild(av);
   msg.appendChild(bubble);
@@ -610,7 +607,8 @@ async function send() {
 
   const imgCount = state.pendingImgs.length;
   const userText = text || (imgCount === 1 ? '(image attached)' : '(' + imgCount + ' images attached)');
-  addMessage('user', userText, state.pendingImgs.length > 0 ? state.pendingImgs[0].b64 : null, state.pendingImgs.length > 0 ? state.pendingImgs[0].mime : null, state.pendingImgs.length);
+  const allImgsForDisplay = state.pendingImgs.length > 0 ? state.pendingImgs.map(i => ({ b64: i.b64, mime: i.mime })) : null;
+  addMessage('user', userText, state.pendingImgs.length > 0 ? state.pendingImgs[0].b64 : null, state.pendingImgs.length > 0 ? state.pendingImgs[0].mime : null, state.pendingImgs.length, allImgsForDisplay);
   box.value = '';
   autoResize(box);
 
