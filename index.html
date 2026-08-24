@@ -690,9 +690,10 @@ async function send() {
   const isMarketingRequest = text && MARKETING_SIGNALS.some(s => text.toLowerCase().includes(s));
   const SURFACE_KEYWORDS = ['product page', 'app store', 'in-app', 'email', 'webpage'];
   const hasSurface = text && SURFACE_KEYWORDS.some(s => text.toLowerCase().includes(s));
-  if (isMarketingRequest && !hasSurface && !state.pendingSurfaceQuestion) {
+  // Mark surface as established if user answers with a surface keyword
+  if (hasSurface) state.surfaceEstablished = true;
+  if (isMarketingRequest && !hasSurface && !state.pendingSurfaceQuestion && !state.surfaceEstablished) {
     state.pendingSurfaceQuestion = true;
-    addMessage('user', userText);
     addMessage('ai', 'Where will this copy live — product page, App Store, email, in-app, or somewhere else?');
     document.getElementById('send-btn').disabled = false;
     return;
@@ -748,6 +749,8 @@ function clearChat() {
   state.messages = [];
   state.tier2Content = '';
   state.tier2Name = '';
+  state.surfaceEstablished = false;
+  state.pendingSurfaceQuestion = false;
   clearImgs();
   document.getElementById('chat-messages').innerHTML = '';
   if (state.guideContent) { addMessage('ai', 'Conversation cleared. Ask away.'); }
