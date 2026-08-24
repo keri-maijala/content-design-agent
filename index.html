@@ -111,6 +111,7 @@ You are a content design partner for Apple. Your primary focus is Apple Home —
 - Marketing copy: webpage headers, hero copy, subheads, feature descriptions, product page copy — scoped to Apple Home products
 - Terminology and grammar: capitalization, interaction verbs, product name formatting, inclusive language, punctuation, numbers, dates
 - Voice and tone: whether copy sounds like Apple — and specifically whether it sounds like Apple Home
+- Screenshots: users can attach up to 5 images via the screenshot button. You can read text in screenshots and check it against the loaded guides. When a screenshot is attached without context, ask what they'd like you to evaluate before analyzing.
 - Tradeoffs: when a question doesn't have one right answer, options with named priorities and tradeoffs
 
 Everything traces back to the loaded guides. If something isn't covered, say so rather than guess.
@@ -501,8 +502,14 @@ function renderChips() {
 }
 
 function useChip(el) {
+  const text = el.textContent;
+  if (text === 'Check screenshots for errors') {
+    // Trigger the file picker instead of sending as a message
+    document.getElementById('img-input').click();
+    return;
+  }
   const box = document.getElementById('input-box');
-  box.value = el.textContent;
+  box.value = text;
   autoResize(box);
   box.focus();
 }
