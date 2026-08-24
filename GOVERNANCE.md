@@ -14,6 +14,7 @@ This document defines how the Content Design Agent is maintained, who owns what,
 | `guides/apple-privacy.md` | Content Design | Curated from public Apple HIG — Privacy |
 | `guides/apple-home-voice-tone.md` | Content Design + Marketing | Shared doc; see section-level ownership below |
 | `index.html` | Content Design | App shell, system prompt, provider config |
+| `Figma/Content Design Agent/ui.html` | Content Design | Figma plugin UI and system prompt |
 | `prompts.js` | Content Design | Prompt variants and behavioral configuration |
 | `DECISIONS.md` | Content Design | Decision log; anyone can propose, CD approves |
 | `GOVERNANCE.md` | Content Design | This file |
@@ -43,6 +44,32 @@ When the agent redirects out-of-scope requests, it should name the owning team f
 - **Marketing — Product value statements** — owned by Marketing. Covers per-product value propositions and emotional register for promotional contexts.
 
 *Full section-level permissions model to be defined. See open items below.*
+
+---
+
+## Single source of truth for guidelines
+
+The guide files in `/guides/` are the canonical source of truth for all content guidelines. Every surface that evaluates copy against Apple guidelines — currently the web agent (`index.html`) and the Figma plugin (`Figma/Content Design Agent/ui.html`) — must derive its rules from these files.
+
+### Principle
+
+The agent and the plugin must always work from the same sources. The point of the system is consistency across surfaces. A guideline that exists in `/guides/` but not in the plugin prompt is a gap. A rule in the plugin prompt that isn't in `/guides/` is unsourced and should be added to the guides or removed.
+
+### What this means in practice
+
+- When a new guide file is added to `/guides/`, the plugin system prompt must be updated before the guide is considered shipped.
+- When a guideline is updated in a guide file, the plugin system prompt must be updated in the same commit or PR.
+- The plugin system prompt is a distillation of the guide files — compressed for the constraints of a Figma plugin context — not an independent ruleset.
+- Discrepancies between the plugin prompt and the guide files are bugs, not variations.
+
+### Surfaces covered by this principle
+
+| Surface | File | Pulls from |
+|---|---|---|
+| Web agent | `index.html` | `/guides/*.md` loaded at runtime via guide system |
+| Figma plugin | `Figma/Content Design Agent/ui.html` | System prompt must reflect `/guides/*.md` |
+
+If additional surfaces are added (e.g. a Slack bot, a VS Code extension), they join this table and the same principle applies.
 
 ---
 
@@ -92,3 +119,4 @@ True LLM-agnosticism is a process discipline, not a technical one. The tool supp
 - [ ] Establish benchmark set for model migration evaluation
 - [ ] Define review cadence for guide content (when sources update, how changes are incorporated)
 - [ ] Decide whether to expose model/provider selection publicly or lock to a single provider
+- [ ] Sync Figma plugin system prompt with full `/guides/` source material (currently a subset)
