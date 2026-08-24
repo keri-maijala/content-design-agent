@@ -100,6 +100,34 @@ function detectDomain(message) {
   return fuzzyMatchesDomain(lower);
 }
 
+// Detect specific Home product from message text.
+// Returns 'HomePod mini', 'HomePod', 'Apple TV 4K', 'Home app', or null.
+function detectProduct(message) {
+  const lower = message.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const words = lower.split(' ');
+
+  // Mini must be checked before HomePod (it's a subset match)
+  if (lower.includes('homepod mini') || lower.includes('mini homepod') || lower.includes('home pod mini')) return 'HomePod mini';
+  if (/\bmini\b/.test(lower) && /\b(home|pod|apple)\b/.test(lower)) return 'HomePod mini';
+
+  // HomePod (including fuzzy)
+  if (lower.includes('homepod') || lower.includes('home pod')) return 'HomePod';
+  for (const word of words) {
+    if (word.length < 4) continue;
+    if (levenshtein(word, 'homepod') <= 2) return 'HomePod';
+  }
+
+  // Apple TV
+  if (lower.includes('apple tv') || lower.includes('appletv') || lower.includes('apple tv 4k')) return 'Apple TV 4K';
+  if (/\btv\b/.test(lower) && /\b(apple|4k|stream)\b/.test(lower)) return 'Apple TV 4K';
+
+  // Home app
+  if (lower.includes('home app') || lower.includes('apple home')) return 'Home app';
+  if (/\bhome\b/.test(lower) && /\b(app|hub|kit|screen|device)\b/.test(lower)) return 'Home app';
+
+  return null;
+}
+
 const AUTO_PROMPT = `You are a content design partner having a conversation — not writing a report. No headers. No labels. Just talk.
 
 AGENT SCOPE
@@ -701,7 +729,24 @@ async function send() {
   state.pendingSurfaceQuestion = false;
 
   const msgContent = userContent.length === 1 && userContent[0].type === 'text' && !state.pendingImgs.length ? text : userContent;
-  state.messages.push({ role: 'user', content: msgContent });
+
+  // Detect product early and inject as system note before pushing to messages
+  if (text && typeof detectDomain === 'function') {
+    const domain = detectDomain(text);
+    if (domain === 'home' && typeof detectProduct === 'function') {
+      const product = detectProduct(text);
+      if (product) {
+        const note = '[SYSTEM NOTE: The user is referring to ' + product + '. This is a confirmed product reference — do not ask which product they mean.]';
+        if (Array.isArray(msgContent)) {
+          msgContent.push({ type: 'text', text: note });
+        } else {
+          userContent.push({ type: 'text', text: note });
+        }
+      }
+    }
+  }
+
+  state.messages.push({ role: 'user', content: Array.isArray(msgContent) ? msgContent : userContent.length > 1 ? userContent : msgContent });
   clearImgs();
 
   let tier2Content = state.tier2Content || '';
