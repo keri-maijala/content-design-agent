@@ -20,6 +20,21 @@ This document defines how the Content Design Agent is maintained, who owns what,
 | `PROJECT_STATE.md` | Content Design | Current build state; updated each session |
 | `README.md` | Content Design | Public-facing; reflects current state of guides and app |
 
+### Surface ownership
+
+> **Note:** This table reflects provisional ownership for prototype/demo purposes. Update as teams and roles are confirmed.
+
+| Surface | Owner | Notes |
+|---|---|---|
+| UI copy | UX Writing | Buttons, labels, alerts, error states, empty states, onboarding, notifications, tooltips, settings, permission strings |
+| Marketing copy | Marketing | Webpage hero headlines, page headers, subheads, feature descriptions, product page copy |
+| Privacy strings | Privacy | Permission dialogs, purpose strings, data disclosures |
+| Developer-facing copy | Developer Relations | HomeKit setup, accessory naming, developer documentation references |
+
+When the agent redirects out-of-scope requests, it should name the owning team from this table. Update the system prompt in `index.html` if ownership changes.
+
+---
+
 ### Section-level ownership (apple-home-voice-tone.md)
 
 `apple-home-voice-tone.md` is a shared document with two distinct sections owned by different teams:
