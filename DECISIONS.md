@@ -1,131 +1,96 @@
-# Content Design Agent — Key Decisions
-**Project:** Content Design Agent (CDA)
-**Author:** Keri Maijala
+# Decisions
 
-This document records significant architectural and design decisions made during the development of the CDA portfolio project. It exists so decisions can be revisited with context, and so collaborators and stakeholders understand not just what was built but why.
+A log of significant architectural, design, and governance decisions made during the build of the Content Design Agent. Entries are added when a decision is made — not retroactively cleaned up. Newest first.
 
 ---
 
-## Decision 1: Prompts as a separate content layer
+## August 24, 2026
 
-**Decision:** System prompts live in prompts.js, separate from application code in index.html.
+### Single source of truth for guidelines
+**Decision:** All surfaces that evaluate copy against Apple guidelines — currently the web agent and the Figma plugin — must derive their rules from the same source: the guide files in `/guides/`.
 
-**Why:** Prompts are content decisions, not code decisions. A content designer should be able to read, edit, and version them without touching application logic. Mixing prompts into the app code creates a maintenance burden and obscures the reasoning behind the agent's behavior.
+**Rationale:** The agent and the plugin were built independently and had diverged. The plugin's system prompt was written by hand and covered only a subset of the guidelines in `/guides/`. This is a content consistency problem: a violation the agent catches should be caught by the plugin, and vice versa. The point of the system is consistency across surfaces.
 
-**Tradeoff:** When the app is opened directly from a desktop (not served), the external script can't load. The solution is an inlined fallback in index.html. This means prompt edits must be synced to both files — a known friction point until the app is always served.
-
-**Portfolio relevance:** Demonstrates separation of concerns as a content systems principle. The same logic applies at scale — content and code should have different owners and different edit cycles.
-
----
-
-## Decision 2: Mode inference over explicit mode switching
-
-**Decision:** The agent infers question type (lookup, explore, critique) from the question itself rather than requiring the user to select a mode before asking.
-
-**Why:** Asking a user to categorize their own question before asking it is friction. It also assumes users know which mode applies to their question — which they often don't. The agent is better positioned to make that determination.
-
-**What was removed:** A sidebar with four mode buttons (Q&A, Style lookup, Brainstorm, Screenshot critique). These were replaced with universal suggestion chips and an AUTO_PROMPT that handles all behaviors.
-
-**Tradeoff:** Mode inference requires the prompt to be well-calibrated. Early versions asked clarifying questions reflexively rather than only when genuinely needed. This required several iterations to fix.
-
-**Portfolio relevance:** Shows judgment about when to reduce UI complexity in favor of embedded intelligence — a key content systems design decision.
+**What this means:** The plugin system prompt is a distillation of the guide files, not an independent ruleset. When a guide file changes, both surfaces update. Discrepancies are bugs. Principle documented in `GOVERNANCE.md`.
 
 ---
 
-## Decision 3: Two-tier guide architecture
+## August 23, 2026
 
-**Decision:** Style guides are organized in two tiers. Tier 1 (apple-guidelines.md) is the foundation that loads always. Tier 2 documents (apple-home-voice-tone.md and future service-specific guides) are domain-specific and loaded when the agent detects relevant context.
+### Fuzzy keyword matching for guide loading
+**Decision:** Added Levenshtein distance matching as a fallback for domain detection, so misspelled Home-related terms (e.g. "homkit", "homekti", "homepd") still trigger the correct guide load.
 
-**Why:** At scale, a single monolithic style guide creates ownership problems. The person responsible for Apple Card copy shouldn't have to coordinate with the person responsible for HomePod copy every time either wants to update something. Separate files mean separate ownership, separate versioning, separate review cycles.
+**Rationale:** Users typing quickly or on mobile will misspell product names. Hard-coded keyword matching would silently fail to load the right guide. Fuzzy matching makes the system resilient without surfacing the mechanism to the user.
 
-**The governance model:** Each Tier 2 document is owned by the content designer or team closest to that product. The systems leader (the role this portfolio targets) owns the Tier 1 document and the standards that govern how Tier 2 documents are created and maintained.
+**Thresholds:** Distance ≤ 1 for short keywords; ≤ 2 for longer terms. Tuned to avoid false positives on unrelated words.
 
-**What's built vs. designed:** Tier 1 and one Tier 2 document (Home voice and tone) are built. The detection and loading logic for additional Tier 2 documents is designed but not yet implemented.
+### Multi-image upload
+**Decision:** Support up to 5 images per message, multi-file selection in one pick, rendered as a grid in the chat bubble.
 
-**Portfolio relevance:** This is the core systems thinking demonstration — separate ownership, unified consumption, governance visible in the architecture.
+**Rationale:** Real-world use involves reviewing full flows, not single screens. Limiting to one image per message would require multiple round trips for the most common use case.
 
----
+**Context detection:** The agent detects whether uploaded images represent a flow (sequential screens) or a comparison (variants) and responds accordingly. Flow order is confirmed with the user before analysis.
 
-## Decision 4: Clarifying questions only when context is genuinely missing
+### Marketing boundary enforcement
+**Decision:** The agent holds the line on marketing copy requests and redirects to the Marketing team. A JavaScript surface check fires before the API call — if a marketing signal is detected without an explicit surface declaration, the agent asks a clarifying question rather than proceeding.
 
-**Decision:** The agent asks one clarifying question only when it cannot give a precise answer without more information. If surface, product, or scenario is clear from the question, it answers directly.
+**Rationale:** The agent's scope is UI copy (UX Writing) and related surfaces. Marketing copy has a different owner, different register, and different rules. Conflating the two would undermine both the agent's usefulness and the surface ownership model.
 
-**Why:** Reflexive clarifying questions — asking for context even when it's already present — are patronizing and break the conversational flow. They signal that the agent isn't actually reading what was written.
+### Surface ownership in system prompt and GOVERNANCE.md
+**Decision:** The agent knows which team owns each surface (UX Writing, Marketing, Privacy, Developer Relations) and names the owning team when redirecting out-of-scope requests.
 
-**The sequence:** Context missing → ask one question, stop completely → receive answer → respond with corrected copy first, reasoning after. Context present → answer directly.
+**Rationale:** Redirecting without context is unhelpful. Naming the team makes the redirect actionable and models good cross-functional practice.
 
-**Portfolio relevance:** Reflects the value that the agent should serve the designer, not create overhead for them. Also demonstrates prompt precision — getting this behavior right required multiple iterations.
+### Terminology correction
+**Decision:** The agent flags misused Apple terms in user prompts before responding — e.g. "error message" → "alert," "click" → "tap," "login" → "sign in."
 
----
+**Rationale:** If the user uses incorrect terminology in their request, any copy the agent generates may inherit those terms. Correcting at the prompt level is more reliable than correcting in the output.
 
-## Decision 5: Corrected copy leads every response
+### Screenshot chip opens file picker directly
+**Decision:** The screenshot upload chip opens the file picker immediately on tap, rather than sending a message to the chat thread.
 
-**Decision:** When giving a correction or suggestion, the corrected copy always appears first. Reasoning follows.
+**Rationale:** The previous behavior (chip → message → file picker) added an unnecessary step and left a literal "Check screenshots for errors" message in the chat history before any images were attached. Direct file picker is faster and cleaner.
 
-**Why:** A designer asking "how does this look?" wants to know what it should be. Leading with a list of problems buries the answer and makes the designer read through critique before getting to the thing they need. Corrected copy first respects the designer's time and mirrors how a good editor actually gives feedback.
+### Demo prompt chips updated
+**Decision:** Prompt chips updated to: "What help does this agent offer?", "Brainstorm a headline", "Check screenshots for errors."
 
-**What this required:** Explicit instruction in the prompt with a correct example and an incorrect example side by side. Abstract instructions like "lead with the answer" were insufficient — the model defaulted to its training pattern of problem-first until shown specifically what not to do.
-
----
-
-## Decision 6: Human in the loop as a design principle
-
-**Decision:** The agent never makes final calls on subjective questions. It offers options, names tradeoffs, and invites the designer into the decision.
-
-**Why:** This reflects Keri's core value as a content designer: keep humans in the loop, show the decisions that were made, build human judgment into the process. An agent that confidently gives one answer on a subjective question is doing something that looks helpful but actually removes the human from a decision they should be making.
-
-**How it manifests:**
-- Binary questions (documented rules) get one direct answer
-- Subjective questions (voice, tone, intent) get 2-3 options with reasoning
-- The agent always ends with a question that moves the decision forward
-- Conflicts between guides are named, not silently resolved
-
-**Portfolio relevance:** This is the philosophical foundation of the entire project, and it's encoded directly into the agent's behavior. A hiring manager who demos the agent should be able to see these values in action, not just read about them.
+**Rationale:** Previous chips were generic. Updated chips reflect the agent's actual capabilities and map to the three main demo narratives: scope, creative assist, and screenshot review.
 
 ---
 
-## Decision 7: No markdown tables in responses
+## Pre-August 23 (founding decisions)
 
-**Decision:** Markdown tables are banned from all agent responses.
+### Silent guide loading — no user-facing guide picker
+**Decision:** Guides load invisibly on boot and in response to contextual signals. There is no guide picker or guide management UI visible to the user.
 
-**Why:** In a chat interface, markdown tables render as raw characters — pipes, dashes, and misaligned text. Early critique responses used tables to organize issues, which made them unreadable in practice.
+**Rationale:** The intelligence of the system should be invisible. Guide selection is a content design decision, not a user decision. Exposing a picker would imply the user needs to manage the system — the opposite of the intended experience. "The intelligence is invisible to the user" is a deliberate architectural principle.
 
-**The fix:** Plain prose for all responses. Issues are named and described in sentences, not rows. This also aligns with the conversational register the agent should maintain — this is a dialogue, not a report.
+### Contextual Tier 2 guide loading
+**Decision:** Home-related keywords in user messages trigger a silent load of `apple-home-voice-tone.md` as a second context layer, on top of the always-loaded base guides.
 
----
+**Rationale:** Loading all guides for every query is wasteful and dilutes the context window. Loading guides contextually keeps the agent sharp on the topic at hand.
 
-## Decision 8: LLM-agnostic provider architecture
+### Guide file ordering matters
+**Decision:** Content that must be reliably surfaced in responses should appear early in its guide file. Apple Style Guide content appears first in `apple-guidelines.md`.
 
-**Decision:** The agent supports multiple LLM providers (Anthropic, OpenAI, Google Gemini, Mistral) via a settings panel. No provider is hardcoded.
+**Rationale:** LLMs weight earlier context more heavily. Critical reference material placed late in a large file may be underweighted or missed.
 
-**Why:** Different teams and organizations have different API relationships. A tool that only works with one provider is less useful as a demonstration of systems thinking and less adoptable by a real team.
+### Figma plugin as a separate surface
+**Decision:** The Figma plugin is a distinct build (`Figma/Content Design Agent/`) with its own UI, API call, and system prompt — not a wrapper around the web agent.
 
-**How it works:** Each provider has a config object with its endpoint, header format, request body builder, and response parser. Switching providers means changing the config, not the application logic. This is the adapter pattern applied to LLM provider switching.
+**Rationale:** The Figma context requires fundamentally different interaction patterns: frame selection, node-level text extraction, in-canvas fix application, style preservation. A shared codebase would have required too many compromises. The plugin and agent share guidelines (by principle) but not code.
 
-**Portfolio relevance:** Demonstrates that the agent is designed as infrastructure, not a one-off tool.
+### Fragment-level fixes in Figma plugin
+**Decision:** The plugin reports violations at the fragment level (the specific wrong word or phrase) rather than the full node text, and applies fixes back-to-front against the original text to avoid index drift.
 
----
+**Rationale:** Full-node replacement is destructive and error-prone when a node has multiple violations or mixed formatting. Fragment-level targeting is more precise, supports per-character style preservation, and allows multiple independent fixes per node.
 
-## Decision 9: Visual design follows Apple HIG
+### Per-character style map capture and restore
+**Decision:** Before applying any fix, the plugin captures a full per-character style map (font, size, fills, letter spacing, line height, text decoration) and restores it after text replacement.
 
-**Decision:** The agent's UI follows Apple Human Interface Guidelines for a macOS/iOS context — system font stack, HIG blue (#007aff) as the key color, warm neutral grays, translucent surfaces, continuous-curve border radii.
+**Rationale:** Figma loses mixed text formatting on character replacement. Without explicit style restoration, applying a fix to a node with bold or colored text would flatten all formatting to the node default.
 
-**Why:** The agent is a portfolio piece targeting Apple roles. Its visual design should demonstrate that the designer understands and can apply the HIG, not just reference it.
+### Single undo step via figma.commitUndo()
+**Decision:** All fixes in a single Apply All operation are committed as one undo step.
 
-**What this means in practice:**
-- System font stack renders San Francisco on Apple devices — no external font needed
-- #007aff is Apple's documented interactive blue — not a generic accent color
-- Chat bubbles match iOS Messages conventions — the most recognizable Apple UI pattern
-- Translucent topbar and input bar use backdrop-filter, consistent with Apple's depth system
-
-**Constraint:** The agent looks like something an external developer built using the HIG — not like an Apple internal tool. This distinction is intentional and defensible.
-
----
-
-## Decisions still open
-
-**Conflict logging persistence:** When the agent detects a conflict between Tier 1 and Tier 2 guides, it should log that conflict somewhere persistent. Currently conflicts surface in chat but disappear when the session ends. The right solution in a real system is a shared document or ticketing system. For the demo, a formatted chat message the user can copy is the interim approach.
-
-**Guide detection for Tier 2 loading:** The keyword detection + clarifying question model is designed but not yet implemented. Open question: what keywords trigger which documents, and what happens when a question could belong to multiple domains?
-
-**SYSTEM_PROMPTS.md update:** This document currently reflects the old four-mode architecture. It needs to be updated to document the auto-mode approach and the two-tier guide loading model.
+**Rationale:** Multiple undo steps for a single intentional action is disruptive. One Cmd+Z undoes the entire Apply All, which matches user expectation.
