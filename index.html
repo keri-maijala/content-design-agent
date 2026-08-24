@@ -77,11 +77,11 @@ function fuzzyMatchesDomain(lower) {
   for (const word of words) {
     if (word.length < 4) continue; // too short to fuzzy-match reliably
     for (const target of HOME_FUZZY_CLEAR) {
-      const threshold = Math.max(target.length, word.length) <= 6 ? 1 : 2;
+      const threshold = target.length <= 6 ? 1 : 2;
       if (levenshtein(word, target) <= threshold) return 'home';
     }
     for (const target of HOME_FUZZY_AMBIGUOUS) {
-      const threshold = Math.max(target.length, word.length) <= 6 ? 1 : 2;
+      const threshold = target.length <= 6 ? 1 : 2;
       if (levenshtein(word, target) <= threshold) return 'ambiguous';
     }
   }
@@ -98,34 +98,6 @@ function detectDomain(message) {
     if (new RegExp('\\b' + kw + '\\b', 'i').test(message)) return 'ambiguous';
   }
   return fuzzyMatchesDomain(lower);
-}
-
-// Detect specific Home product from message text.
-// Returns 'HomePod mini', 'HomePod', 'Apple TV 4K', 'Home app', or null.
-function detectProduct(message) {
-  const lower = message.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-  const words = lower.split(' ');
-
-  // Mini must be checked before HomePod (it's a subset match)
-  if (lower.includes('homepod mini') || lower.includes('mini homepod') || lower.includes('home pod mini')) return 'HomePod mini';
-  if (/\bmini\b/.test(lower) && /\b(home|pod|apple)\b/.test(lower)) return 'HomePod mini';
-
-  // HomePod (including fuzzy)
-  if (lower.includes('homepod') || lower.includes('home pod')) return 'HomePod';
-  for (const word of words) {
-    if (word.length < 4) continue;
-    if (levenshtein(word, 'homepod') <= 2) return 'HomePod';
-  }
-
-  // Apple TV
-  if (lower.includes('apple tv') || lower.includes('appletv') || lower.includes('apple tv 4k')) return 'Apple TV 4K';
-  if (/\btv\b/.test(lower) && /\b(apple|4k|stream)\b/.test(lower)) return 'Apple TV 4K';
-
-  // Home app
-  if (lower.includes('home app') || lower.includes('apple home')) return 'Home app';
-  if (/\bhome\b/.test(lower) && /\b(app|hub|kit|screen|device)\b/.test(lower)) return 'Home app';
-
-  return null;
 }
 
 const AUTO_PROMPT = `You are a content design partner having a conversation — not writing a report. No headers. No labels. Just talk.
@@ -159,9 +131,9 @@ Each Home product has a distinct marketing register:
 - Apple TV 4K: cinematic, living room, entertainment occasion
 - Home app: control, simplicity, foundation
 
-If product is genuinely ambiguous or unrecognizable: ask "Which Home product is this for — HomePod, HomePod mini, Apple TV 4K, or the Home app?" and stop. If the user mentions a product informally, misspelled, abbreviated, or in lowercase (e.g. "homepod", "home pod", "appletv", "homepd", "hompd", "hompod", "tv 4k", "mini"), treat it as a clear product reference and do not ask for clarification. Use your best judgment to identify the intended product and proceed. Only ask if the input contains no recognizable reference to any Apple Home product whatsoever — not even a partial or approximate match.
+If product not mentioned: ask "Which Home product is this for — HomePod, HomePod mini, Apple TV 4K, or the Home app?" and stop.
 If surface not explicitly stated as one of (product page, App Store, email, in-app): ask "Where will this copy live — product page, App Store, email, in-app, or somewhere else?" and stop. Do not infer surface from words like "callout", "headline", "copy", or "feature" — these are not surfaces.
-If product known and surface known: signal the register shift in one sentence, then give the copy options, then one brief sentence on what each prioritizes. Do not ask a follow-up question at the end. The designer will respond if they want to go further.
+If product known and surface known: signal the register shift in one sentence, then give the copy, then the brief reason.
 
 SURFACE OWNERSHIP
 
@@ -718,10 +690,9 @@ async function send() {
   const isMarketingRequest = text && MARKETING_SIGNALS.some(s => text.toLowerCase().includes(s));
   const SURFACE_KEYWORDS = ['product page', 'app store', 'in-app', 'email', 'webpage'];
   const hasSurface = text && SURFACE_KEYWORDS.some(s => text.toLowerCase().includes(s));
-  // Mark surface as established if user answers with a surface keyword
-  if (hasSurface) state.surfaceEstablished = true;
-  if (isMarketingRequest && !hasSurface && !state.pendingSurfaceQuestion && !state.surfaceEstablished) {
+  if (isMarketingRequest && !hasSurface && !state.pendingSurfaceQuestion) {
     state.pendingSurfaceQuestion = true;
+    addMessage('user', userText);
     addMessage('ai', 'Where will this copy live — product page, App Store, email, in-app, or somewhere else?');
     document.getElementById('send-btn').disabled = false;
     return;
@@ -729,24 +700,7 @@ async function send() {
   state.pendingSurfaceQuestion = false;
 
   const msgContent = userContent.length === 1 && userContent[0].type === 'text' && !state.pendingImgs.length ? text : userContent;
-
-  // Detect product early and inject as system note before pushing to messages
-  if (text && typeof detectDomain === 'function') {
-    const domain = detectDomain(text);
-    if (domain === 'home' && typeof detectProduct === 'function') {
-      const product = detectProduct(text);
-      if (product) {
-        const note = '[SYSTEM NOTE: The user is referring to ' + product + '. This is a confirmed product reference — do not ask which product they mean.]';
-        if (Array.isArray(msgContent)) {
-          msgContent.push({ type: 'text', text: note });
-        } else {
-          userContent.push({ type: 'text', text: note });
-        }
-      }
-    }
-  }
-
-  state.messages.push({ role: 'user', content: Array.isArray(msgContent) ? msgContent : userContent.length > 1 ? userContent : msgContent });
+  state.messages.push({ role: 'user', content: msgContent });
   clearImgs();
 
   let tier2Content = state.tier2Content || '';
@@ -794,8 +748,6 @@ function clearChat() {
   state.messages = [];
   state.tier2Content = '';
   state.tier2Name = '';
-  state.surfaceEstablished = false;
-  state.pendingSurfaceQuestion = false;
   clearImgs();
   document.getElementById('chat-messages').innerHTML = '';
   if (state.guideContent) { addMessage('ai', 'Conversation cleared. Ask away.'); }
