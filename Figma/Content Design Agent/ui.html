@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 11px;
+      color: #1e1e1e;
+      background: #ffffff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    .header {
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid #e5e5e5;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-icon {
+      width: 16px;
+      height: 16px;
+      opacity: 0.6;
+    }
+
+    .header-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #1e1e1e;
+      letter-spacing: 0.01em;
+    }
+
+    .header-badge {
+      margin-left: auto;
+      font-size: 9px;
+      font-weight: 500;
+      color: #888;
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 3px;
+      letter-spacing: 0.02em;
+    }
+
+    /* ── API key section ── */
+    .api-section {
+      padding: 10px 16px;
+      border-bottom: 1px solid #e5e5e5;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .api-input {
+      flex: 1;
+      height: 28px;
+      padding: 0 8px;
+      border: 1px solid #e5e5e5;
+      border-radius: 3px;
+      font-size: 11px;
+      font-family: inherit;
+      color: #1e1e1e;
+      background: #fafafa;
+      outline: none;
+    }
+
+    .api-input:focus {
+      border-color: #0d99ff;
+      background: #fff;
+    }
+
+    .api-input::placeholder {
+      color: #b0b0b0;
+    }
+
+    .btn-save {
+      height: 28px;
+      padding: 0 10px;
+      background: #1e1e1e;
+      color: #fff;
+      border: none;
+      border-radius: 3px;
+      font-size: 11px;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-save:hover {
+      background: #333;
+    }
+
+    /* ── Main area ── */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* ── Selection info ── */
+    .selection-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      background: #f5f5f5;
+      border-radius: 4px;
+      color: #666;
+    }
+
+    .selection-info.has-selection {
+      background: #f0f7ff;
+      color: #0d6efd;
+    }
+
+    .selection-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ccc;
+      flex-shrink: 0;
+    }
+
+    .selection-info.has-selection .selection-dot {
+      background: #0d99ff;
+    }
+
+    .selection-label {
+      font-size: 11px;
+    }
+
+    /* ── Scan button ── */
+    .btn-scan {
+      width: 100%;
+      height: 32px;
+      background: #0d99ff;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.01em;
+    }
+
+    .btn-scan:hover {
+      background: #0a82d9;
+    }
+
+    .btn-scan:disabled {
+      background: #c8e6fa;
+      cursor: not-allowed;
+    }
+
+    /* ── Status ── */
+    .status {
+      font-size: 10px;
+      color: #888;
+      text-align: center;
+      min-height: 14px;
+    }
+
+    /* ── Results ── */
+    .results {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    .results-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .results-count {
+      font-size: 10px;
+      color: #888;
+    }
+
+    .results-count.has-errors {
+      color: #e53e3e;
+      font-weight: 600;
+    }
+
+    .results-count.no-errors {
+      color: #38a169;
+      font-weight: 600;
+    }
+
+    /* ── Issue card ── */
+    .issue-card {
+      border: 1px solid #e5e5e5;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .issue-card.error {
+      border-left: 3px solid #e53e3e;
+    }
+
+    .issue-card.warning {
+      border-left: 3px solid #d69e2e;
+    }
+
+    .issue-card.ok {
+      border-left: 3px solid #38a169;
+    }
+
+    .issue-header {
+      padding: 7px 10px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      background: #fafafa;
+    }
+
+    .issue-type {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 1px 5px;
+      border-radius: 2px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .issue-type.error {
+      background: #fff5f5;
+      color: #e53e3e;
+    }
+
+    .issue-type.warning {
+      background: #fffbeb;
+      color: #d69e2e;
+    }
+
+    .issue-location {
+      font-size: 11px;
+      color: #1e1e1e;
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .issue-body {
+      padding: 7px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .issue-copy {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .copy-before {
+      font-size: 11px;
+      color: #888;
+      text-decoration: line-through;
+    }
+
+    .copy-arrow {
+      font-size: 10px;
+      color: #ccc;
+    }
+
+    .copy-after {
+      font-size: 11px;
+      color: #1e1e1e;
+      font-weight: 500;
+    }
+
+    .issue-rule {
+      font-size: 10px;
+      color: #888;
+      line-height: 1.4;
+    }
+
+    /* ── Dismiss button ── */
+    .btn-dismiss {
+      margin-top: 6px;
+      padding: 3px 8px;
+      background: none;
+      border: 1px solid #e5e5e5;
+      border-radius: 3px;
+      font-size: 10px;
+      font-family: inherit;
+      color: #888;
+      cursor: pointer;
+    }
+
+    .btn-dismiss:hover {
+      border-color: #ccc;
+      color: #555;
+    }
+
+    /* ── Apply button ── */
+    .btn-apply {
+      width: 100%;
+      height: 28px;
+      background: #1e1e1e;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 2px;
+    }
+
+    .btn-apply:hover {
+      background: #333;
+    }
+
+    .btn-apply:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    /* ── Clean state ── */
+    .clean-state {
+      padding: 12px 10px;
+      background: #f0fff4;
+      border: 1px solid #c6f6d5;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .clean-icon {
+      font-size: 14px;
+    }
+
+    .clean-text {
+      font-size: 11px;
+      color: #276749;
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center;
+      padding: 24px 16px;
+      color: #b0b0b0;
+    }
+
+    .empty-state p {
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    /* ── Key saved indicator ── */
+    .key-status {
+      font-size: 10px;
+      color: #888;
+      margin-left: 4px;
+    }
+
+    .key-status.saved {
+      color: #38a169;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <svg class="header-icon" viewBox="0 0 16 16" fill="none">
+      <rect x="2" y="2" width="5" height="5" rx="1" fill="#1e1e1e"/>
+      <rect x="9" y="2" width="5" height="5" rx="1" fill="#1e1e1e"/>
+      <rect x="2" y="9" width="5" height="5" rx="1" fill="#1e1e1e"/>
+      <rect x="9" y="9" width="5" height="5" rx="1" fill="#1e1e1e" opacity="0.3"/>
+    </svg>
+    <span class="header-title">Content Design Agent</span>
+    <span class="header-badge">Apple Home</span>
+  </div>
+
+  <!-- API Key -->
+  <div class="api-section">
+    <input
+      type="password"
+      id="apiKey"
+      class="api-input"
+      placeholder="Anthropic API key"
+    />
+    <button class="btn-save" onclick="saveKey()">Save</button>
+    <span class="key-status" id="keyStatus"></span>
+  </div>
+
+  <!-- Main -->
+  <div class="main" id="main">
+
+    <!-- Selection info -->
+    <div class="selection-info" id="selectionInfo">
+      <div class="selection-dot"></div>
+      <span class="selection-label">No frame selected</span>
+    </div>
+
+    <!-- Scan button -->
+    <button class="btn-scan" id="scanBtn" onclick="scan()" disabled>
+      Scan selected frame
+    </button>
+
+    <!-- Status -->
+    <div class="status" id="status"></div>
+
+    <!-- Results -->
+    <div class="results" id="results" style="display:none"></div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="emptyState">
+      <p>Select a frame and scan to check copy against Apple content guidelines.</p>
+    </div>
+
+  </div>
+
+<script>
+  let apiKey = '';
+  let pendingFixes = [];
+
+  // ── API key ──────────────────────────────────────────────────────────────
+
+  function saveKey() {
+    const input = document.getElementById('apiKey');
+    const val = input.value.trim();
+    if (!val) return;
+    apiKey = val;
+    input.value = '';
+    parent.postMessage({ pluginMessage: { type: 'save-key', key: apiKey } }, '*');
+    showKeySaved();
+    updateScanButton();
+  }
+
+  function showKeySaved() {
+    const el = document.getElementById('keyStatus');
+    el.textContent = '✓ Saved';
+    el.className = 'key-status saved';
+  }
+
+  // ── Selection state ──────────────────────────────────────────────────────
+
+  let hasSelection = false;
+  let selectionName = '';
+
+  function updateScanButton() {
+    const btn = document.getElementById('scanBtn');
+    btn.disabled = !(hasSelection && apiKey);
+  }
+
+  // ── Messages from plugin ─────────────────────────────────────────────────
+
+  window.onmessage = (event) => {
+    const msg = event.data.pluginMessage;
+    if (!msg) return;
+
+    if (msg.type === 'key-loaded') {
+      if (msg.key) {
+        apiKey = msg.key;
+        document.getElementById('keyStatus').textContent = '✓ Saved';
+        document.getElementById('keyStatus').className = 'key-status saved';
+        updateScanButton();
+      }
+    }
+
+    if (msg.type === 'key-saved') {
+      // confirmed by plugin side — no-op, UI already updated
+    }
+
+    if (msg.type === 'selection-change') {
+      hasSelection = msg.hasSelection;
+      selectionName = msg.name || '';
+      const info = document.getElementById('selectionInfo');
+      const dot = info.querySelector('.selection-dot');
+      const label = info.querySelector('.selection-label');
+      if (hasSelection) {
+        info.className = 'selection-info has-selection';
+        label.textContent = `"${selectionName}" selected`;
+      } else {
+        info.className = 'selection-info';
+        label.textContent = 'No frame selected';
+      }
+      updateScanButton();
+    }
+
+    if (msg.type === 'text-content') {
+      runScan(msg.texts, msg.nodes);
+    }
+
+    if (msg.type === 'fixes-applied') {
+      const count = msg.count || 0;
+      setStatus(`${count} fix${count !== 1 ? 'es' : ''} applied. Scan again to verify.`);
+      const applyBtn = document.getElementById('applyBtn');
+      if (applyBtn) applyBtn.disabled = false;
+    }
+  };
+
+  // Request stored key on load
+  parent.postMessage({ pluginMessage: { type: 'load-key' } }, '*');
+
+  // ── Scan ─────────────────────────────────────────────────────────────────
+
+  function scan() {
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    setStatus('Reading frame...');
+    parent.postMessage({ pluginMessage: { type: 'get-text' } }, '*');
+  }
+
+  async function runScan(texts, nodes) {
+    if (!texts || texts.length === 0) {
+      setStatus('No text found in this frame.');
+      return;
+    }
+
+    setStatus('Scanning against Apple content guidelines...');
+
+    const textList = texts.map((t, i) => `[${i}] layer="${t.name}" text="${t.content}"`).join('\n');
+
+    const systemPrompt = `You are a content design reviewer checking Figma copy against Apple content guidelines — specifically the Apple Style Guide, Apple Human Interface Guidelines, and Apple Home voice and tone principles.
+
+You will receive a list of text nodes in this format:
+[index] layer="layer name" text="text content"
+
+Check each node against all of the following guidelines:
+
+---
+TERMINOLOGY — PRODUCT NAMES
+---
+- "Home Hub" — two words, capital H on both. Never "HomeHub" or "home hub."
+- "Apple TV 4K" — space before 4K. Never "AppleTV" or "Apple TV4K."
+- "HomeKit" — one word, capital H and K. Never "Homekit" or "Home Kit."
+- "HomePod" — one word, capital H and P. Never "Homepod" or "Home Pod."
+- "HomePod mini" — lowercase m. Never "HomePod Mini."
+- "Apple Watch" — two words, capital A and W. Never "Applewatch" or "apple watch."
+- "Apple Vision Pro" — three words, capitals A, V, P. Never "headset." Never use "the" before it.
+- "iMac" — lowercase i, uppercase M. Lowercase i retained even at start of sentence.
+- "MacBook" — one word, uppercase M and B.
+- "iPhone", "iPad", "iPod touch" — lowercase i, uppercase second letter. "touch" always lowercase.
+- "App Store" — uppercase A and S. Always "the App Store." Never "at the App Store" — use "on" or "from."
+- "iMessage" — lowercase i, uppercase M.
+- "Home app" — not "The Home" or "Home application." On first mention in body copy, use "Apple Home app."
+- "Apple Home" — when referring to the app specifically. Two words, capitals A and H.
+
+---
+TERMINOLOGY — UI AND HOMEKIT VOCABULARY
+---
+- Never use "service" or "characteristic" in UI — use descriptive names (e.g. "ceiling fan light," "garage door opener").
+- Never use "action set" — always use "scene."
+- "Accessory" not "device" in HomeKit contexts.
+- "Automation" not "workflow" or "rule."
+- "Turn on" / "Turn off" not "Enable" / "Disable" or "Activate" / "Deactivate."
+- "Sign in" not "Log in."
+- "Set up" (verb, two words) not "Setup" (which is a noun).
+- "email" not "e-mail."
+- "alert" not "error message" in user-facing copy.
+- "dialog" not "dialog box."
+- "Select" / "Deselect" for checkboxes — not "check" / "uncheck."
+- "Choose" for menu items — not "select."
+- Prefer "Enter" over "Input" for text entry.
+- Apple Vision Pro experiences are "spatial computing" — never AR, VR, XR, or MR.
+
+---
+CAPITALIZATION
+---
+- Alert and notification headers: title case. Example: "Home Hub Not Responding" not "Home hub not responding."
+- Buttons: sentence case, verb-first. Example: "Set up HomeKit" not "Setup HomeKit" or "Set Up HomeKit."
+- Link labels: title case, no chevrons or arrows. The entire label including any trailing chevron is a single violation. Fragment = full label text with chevron; fragment_corrected = corrected label without chevron.
+- "home" is lowercase in body copy unless referring to the Apple Home app by name. "Home Hub," "Apple Home," "HomePod" are proper nouns — always capitalized.
+- In title-style capitalization: capitalize first and last word, nouns, pronouns, verbs, adjectives, adverbs. Do NOT capitalize articles (a, an, the), coordinating conjunctions (and, but, or), "to" in infinitives, or prepositions of four letters or fewer (at, by, for, in, of, on, to, up) unless they start the title.
+- Don't capitalize the second word of "Sign in," "Set up," "Turn on," "Turn off" in sentence case.
+
+---
+FORMATTING
+---
+- No exclamation marks in product copy. OK occasionally in promotional text.
+- Typos are errors (e.g. "You're" where "Your" is needed).
+- User-assigned names (room names, accessory names) should not be wrapped in quotation marks in alert or error copy. Example: "Default Room" Apple TV → Default Room Apple TV.
+- Serial comma required in lists of three or more: "lights, locks, and cameras" not "lights, locks and cameras."
+- Numbers one through nine: spell out in body text. 10 and above: use numerals.
+- a.m. and p.m.: include periods, space before: "8:30 a.m." not "8:30am" or "8:30 AM."
+- Don't use Latin abbreviations: "for example" not "e.g.," "that is" not "i.e.," "and so on" not "etc."
+- Contractions are encouraged: "can't," "didn't," "you're," "it's." Don't form contractions from proper nouns.
+- Don't confuse "it's" (it is) with "its" (possessive).
+
+---
+INTERACTION VERBS
+---
+- Touch interfaces: "Tap" not "Click" or "Touch."
+- Mouse/trackpad: "Click" not "Hit."
+- Never "OK" alone as a button label — use "Done," "Got it," or a specific action label.
+- "Press and hold" not "long press" for mechanical buttons.
+- "Touch and hold" not "long press" for touchscreens.
+- "Enter" (text by any method) not "Input."
+- "Drag" not "click and drag" or "move."
+
+---
+VOICE AND TONE
+---
+- Active voice. Short, declarative sentences.
+- "you" / "your" — not "users," "customers," or "the user."
+- Lead with what the user can do, not what the product does.
+- No superlatives unless concrete and defensible. No "ultimate," "revolutionary," "powerful" without evidence.
+- Warmth comes from specificity — real scenarios, real moments — not abstract promises.
+- Privacy copy: state once, plainly, no drama. Don't over-explain or repeat.
+
+---
+ERROR STATES AND ALERTS
+---
+- Name what happened simply. Tell the user what to do next. Never blame the user.
+- Prefer "Can't reach [accessory]. Check that it's powered on." over "An unexpected error has occurred."
+- Never use "error" when "couldn't connect" or a specific description works better.
+- Safety/security alerts (smoke, CO, security cameras): direct and calm. No exclamation marks. No editorializing. State detection + immediate action.
+- Do not say "ALERT!" or use all-caps for urgency.
+
+---
+PERMISSION STRINGS
+---
+- Brief, complete sentence. Active voice. Sentence case. Ends with a period.
+- State what the app accesses and why. No passive voice. No vague justifications.
+- Good: "Lets you control this accessory with the Home app and Siri across your Apple devices."
+- Bad: "Microphone access is needed for a better experience." (passive, vague)
+- Bad: "Turn on microphone access." (imperative, no justification)
+- Pre-alert screens: one button only, labeled "Continue" or "Next" — never "Allow." No cancel button.
+
+---
+HOMEKIT-SPECIFIC
+---
+- Don't suggest HomeKit is performing an action. "Back door is unlocked with HomeKit" not "HomeKit unlocked the back door."
+- Don't use HomeKit as a descriptor. Use "works with," "supports," or "compatible with."
+- Use "Apple Home" when referring to the app. Use "HomeKit" for setup, configuration, and instruction copy.
+- Don't indicate sponsorship, partnership, or endorsement from Apple.
+- Never make Apple product names possessive.
+- Never translate Apple, HomeKit, or Apple Home.
+- Refer to Apple devices by name, not category: "iPhone or iPad" not "iOS devices."
+- Don't duplicate HomeKit settings the user already set in the Home app.
+- Accessory naming: alphanumeric, space, and apostrophe only. Start and end with alphanumeric. No emojis.
+- Don't include room names in service names — assign the accessory to the room instead.
+
+---
+APP STORE AND MARKETING REFERENCES
+---
+- "the App Store" with article. Never "at the App Store" — use "on" or "from."
+- Never "Apple App Store," "iTunes App Store," or "iPhone App Store."
+- Never "downloadable" to describe App Store availability.
+- Apple product names in singular form only. Never possessive.
+- Don't refer to Apple devices as "smartphone," "tablet," or "headset."
+- Don't use "the" before Apple Watch or Apple Vision Pro.
+- "[App name] for iPhone" — product name follows app name, never precedes it.
+
+CRITICAL: The "original" field in each issue MUST exactly match the full text of one node from the input — character for character. Do not combine nodes. Do not paraphrase or shorten. Report each violation as a separate issue object, even if multiple violations exist in the same node. Each issue must include the same "index" as its source node. The "rule" field should describe only the single violation for that issue. The "corrected" field must fix ONLY that one violation — leave all other text exactly as it appears in "original", including other errors. Do not fix multiple things in a single corrected field. The "fragment" field must contain only the specific word or phrase that is wrong — extracted verbatim from "original". The "fragment_index" field must be the exact character position (0-based) where "fragment" starts within "original". The "fragment_corrected" field must contain only the corrected version of that fragment.
+
+Respond ONLY with valid JSON, no other text:
+{
+  "issues": [
+    {
+      "index": 0,
+      "layer": "exact layer name from input",
+      "original": "exact full text of the node",
+      "corrected": "full text with only this one violation fixed",
+      "fragment": "the specific wrong word or phrase",
+      "fragment_index": 0,
+      "fragment_corrected": "the corrected version of that fragment",
+      "rule": "brief rule citation — one violation only",
+      "severity": "error"
+    }
+  ],
+  "clean": false
+}
+
+If everything is correct, return: {"issues": [], "clean": true}
+severity is "error" for clear rule violations, "warning" for judgment calls.`;
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 2000,
+          system: systemPrompt,
+          messages: [
+            {
+              role: 'user',
+              content: `Check this copy from a Figma frame:\n\n${textList}`
+            }
+          ]
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        setStatus(`Error: ${data.error.message}`);
+        return;
+      }
+
+      const text = data.content[0].text;
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch (e) {
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) result = JSON.parse(match[0]);
+        else throw new Error('Could not parse response');
+      }
+
+      pendingFixes = result.issues.map(issue => ({
+        index: issue.index,
+        layerName: issue.layer,
+        original: issue.original,
+        corrected: issue.corrected,
+        fragment: issue.fragment,
+        fragment_index: issue.fragment_index,
+        fragment_corrected: issue.fragment_corrected
+      }));
+
+      renderResults(result, nodes);
+      setStatus('');
+
+    } catch (err) {
+      setStatus(`Error: ${err.message}`);
+    }
+  }
+
+  // ── Render results ────────────────────────────────────────────────────────
+
+  function renderResults(result, nodes) {
+    const container = document.getElementById('results');
+    const emptyState = document.getElementById('emptyState');
+    container.innerHTML = '';
+    container.style.display = 'flex';
+    emptyState.style.display = 'none';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'results-header';
+    const title = document.createElement('div');
+    title.className = 'results-title';
+    title.textContent = 'Results';
+    const count = document.createElement('div');
+    if (result.clean) {
+      count.className = 'results-count no-errors';
+      count.textContent = 'No issues';
+    } else {
+      count.className = 'results-count has-errors';
+      count.textContent = `${result.issues.length} issue${result.issues.length !== 1 ? 's' : ''}`;
+    }
+    header.appendChild(title);
+    header.appendChild(count);
+    container.appendChild(header);
+
+    if (result.clean || result.issues.length === 0) {
+      const clean = document.createElement('div');
+      clean.className = 'clean-state';
+      clean.innerHTML = '<span class="clean-icon">✓</span><span class="clean-text">Copy is clean. No issues found.</span>';
+      container.appendChild(clean);
+      return;
+    }
+
+    // Issue cards
+    result.issues.forEach((issue, i) => {
+      const card = document.createElement('div');
+      card.className = `issue-card ${issue.severity}`;
+      card.dataset.index = i;
+
+      const issueHeader = document.createElement('div');
+      issueHeader.className = 'issue-header';
+      issueHeader.innerHTML = `
+        <span class="issue-type ${issue.severity}">${issue.severity}</span>
+      `;
+
+      const body = document.createElement('div');
+      body.className = 'issue-body';
+      body.innerHTML = `
+        <div class="issue-copy">
+          <span class="copy-before">${escapeHtml(issue.fragment || issue.original)}</span>
+          <span class="copy-arrow">→</span>
+          <span class="copy-after">${escapeHtml(issue.fragment_corrected || issue.corrected)}</span>
+        </div>
+        <div class="issue-rule">${escapeHtml(issue.rule)}</div>
+      `;
+
+      const dismissBtn = document.createElement('button');
+      dismissBtn.className = 'btn-dismiss';
+      dismissBtn.textContent = 'Dismiss';
+      dismissBtn.onclick = () => {
+        card.style.opacity = '0.4';
+        card.style.pointerEvents = 'none';
+        pendingFixes[i] = null;
+        updateApplyButton();
+      };
+      body.appendChild(dismissBtn);
+
+      card.appendChild(issueHeader);
+      card.appendChild(body);
+      container.appendChild(card);
+    });
+
+    // Apply all button
+    if (pendingFixes.length > 0) {
+      const applyBtn = document.createElement('button');
+      applyBtn.className = 'btn-apply';
+      applyBtn.id = 'applyBtn';
+      applyBtn.textContent = `Apply all ${pendingFixes.length} fix${pendingFixes.length !== 1 ? 'es' : ''} in Figma`;
+      applyBtn.onclick = applyFixes;
+      container.appendChild(applyBtn);
+    }
+  }
+
+  function updateApplyButton() {
+    const applyBtn = document.getElementById('applyBtn');
+    if (!applyBtn) return;
+    const remaining = pendingFixes.filter(f => f !== null).length;
+    if (remaining === 0) {
+      applyBtn.disabled = true;
+      applyBtn.textContent = 'All fixes dismissed';
+    } else {
+      applyBtn.disabled = false;
+      applyBtn.textContent = `Apply ${remaining} fix${remaining !== 1 ? 'es' : ''} in Figma`;
+    }
+  }
+
+  function applyFixes() {
+    const activeFixes = pendingFixes.filter(f => f !== null);
+    parent.postMessage({
+      pluginMessage: {
+        type: 'apply-fixes',
+        fixes: activeFixes
+      }
+    }, '*');
+    setStatus('Applying fixes...');
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  function setStatus(msg) {
+    document.getElementById('status').textContent = msg;
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+</script>
+</body>
+</html>
