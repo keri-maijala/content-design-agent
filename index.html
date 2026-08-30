@@ -51,7 +51,6 @@ const HOME_KEYWORDS_AMBIGUOUS = [
   'doorbell', 'lock', 'plug', 'switch', 'sensor'
 ];
 
-// Levenshtein distance for fuzzy keyword matching
 function levenshtein(a, b) {
   const m = a.length, n = b.length;
   const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
@@ -66,7 +65,6 @@ function levenshtein(a, b) {
   return dp[m][n];
 }
 
-// Fuzzy targets: single-word Home terms worth catching when misspelled.
 const HOME_FUZZY_CLEAR = ['homekit', 'homepod', 'appletv', 'homehub', 'homepods'];
 const HOME_FUZZY_AMBIGUOUS = ['thermostat', 'doorbell'];
 
@@ -100,16 +98,15 @@ function detectDomain(message) {
 
 // Detects HomePod references and classifies them.
 // Returns:
-//   { model: 'mini', match: 'exact' }  — clearly HomePod mini
-//   { model: 'mini', match: 'typo' }   — typo of HomePod mini
-//   { model: 'unspecified', match: 'exact' }  — clearly HomePod (no mini)
-//   { model: 'unspecified', match: 'typo' }   — typo, could be either
+//   { model: 'mini', match: 'exact' }       — clearly HomePod mini
+//   { model: 'unspecified', match: 'exact' } — clearly HomePod, no mini
+//   { model: 'mini'|'unspecified', match: 'typo' } — looks like a typo
 //   null — no HomePod reference detected
 function detectHomePod(message) {
   const lower = message.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
   const hasMini = /\bmini\b/.test(lower);
 
-  // Exact matches first
+  // Exact phrase matches first
   if (lower.includes('homepod mini') || lower.includes('mini homepod') ||
       lower.includes('home pod mini') || lower.includes('mini home pod')) {
     return { model: 'mini', match: 'exact' };
@@ -124,14 +121,8 @@ function detectHomePod(message) {
     if (word.length < 4) continue;
     const dist = levenshtein(word, 'homepod');
     if (dist === 0) continue; // already caught above
-    if (dist <= 1) {
-      // Close enough to be recognized, not a typo
-      return { model: hasMini ? 'mini' : 'unspecified', match: 'exact' };
-    }
-    if (dist === 2) {
-      // Typo distance
-      return { model: hasMini ? 'mini' : 'unspecified', match: 'typo' };
-    }
+    if (dist === 1) return { model: hasMini ? 'mini' : 'unspecified', match: 'exact' };
+    if (dist === 2) return { model: hasMini ? 'mini' : 'unspecified', match: 'typo' };
   }
 
   return null;
@@ -712,21 +703,24 @@ async function send() {
     userContent.push({ type: 'text', text: '[SYSTEM NOTE: ' + contextHint + ']' });
   }
 
-  // JS-enforced HomePod detection
+  // Build msgContent now — needed whether we proceed or return early
+  const msgContent = userContent.length === 1 && userContent[0].type === 'text' && !state.pendingImgs.length ? text : userContent;
+
+  // JS-enforced HomePod detection — runs only on first message, not follow-up answers
   if (text && !state.pendingHomePodQuestion) {
     const hp = detectHomePod(text);
-    if (hp) {
+    if (hp && (hp.match === 'typo' || hp.model === 'unspecified')) {
       state.pendingHomePodQuestion = true;
+      // Push original message to history so the answer has context
+      state.messages.push({ role: 'user', content: msgContent });
+      clearImgs();
       if (hp.match === 'typo') {
         addMessage('ai', 'Did you mean HomePod or HomePod mini?');
-      } else if (hp.model === 'unspecified') {
+      } else {
         addMessage('ai', 'Which HomePod is this for — HomePod or HomePod mini?');
       }
-      // mini + exact: fall through, no question needed
-      if (hp.match === 'typo' || hp.model === 'unspecified') {
-        document.getElementById('send-btn').disabled = false;
-        return;
-      }
+      document.getElementById('send-btn').disabled = false;
+      return;
     }
   }
   state.pendingHomePodQuestion = false;
@@ -738,13 +732,14 @@ async function send() {
   const hasSurface = text && SURFACE_KEYWORDS.some(s => text.toLowerCase().includes(s));
   if (isMarketingRequest && !hasSurface && !state.pendingSurfaceQuestion) {
     state.pendingSurfaceQuestion = true;
+    state.messages.push({ role: 'user', content: msgContent });
+    clearImgs();
     addMessage('ai', 'Where will this copy live — product page, App Store, email, in-app, or somewhere else?');
     document.getElementById('send-btn').disabled = false;
     return;
   }
   state.pendingSurfaceQuestion = false;
 
-  const msgContent = userContent.length === 1 && userContent[0].type === 'text' && !state.pendingImgs.length ? text : userContent;
   state.messages.push({ role: 'user', content: msgContent });
   clearImgs();
 
