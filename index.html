@@ -685,7 +685,6 @@ async function send() {
   const hasSurface = text && SURFACE_KEYWORDS.some(s => text.toLowerCase().includes(s));
   if (isMarketingRequest && !hasSurface && !state.pendingSurfaceQuestion) {
     state.pendingSurfaceQuestion = true;
-    addMessage('user', userText);
     addMessage('ai', 'Where will this copy live — product page, App Store, email, in-app, or somewhere else?');
     document.getElementById('send-btn').disabled = false;
     return;
