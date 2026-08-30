@@ -77,11 +77,11 @@ function fuzzyMatchesDomain(lower) {
   for (const word of words) {
     if (word.length < 4) continue; // too short to fuzzy-match reliably
     for (const target of HOME_FUZZY_CLEAR) {
-      const threshold = Math.max(target.length, word.length) <= 6 ? 1 : 2;
+      const threshold = target.length <= 6 ? 1 : 2;
       if (levenshtein(word, target) <= threshold) return 'home';
     }
     for (const target of HOME_FUZZY_AMBIGUOUS) {
-      const threshold = Math.max(target.length, word.length) <= 6 ? 1 : 2;
+      const threshold = target.length <= 6 ? 1 : 2;
       if (levenshtein(word, target) <= threshold) return 'ambiguous';
     }
   }
@@ -98,34 +98,6 @@ function detectDomain(message) {
     if (new RegExp('\\b' + kw + '\\b', 'i').test(message)) return 'ambiguous';
   }
   return fuzzyMatchesDomain(lower);
-}
-
-// Detect specific Home product from message text.
-// Returns 'HomePod mini', 'HomePod', 'Apple TV 4K', 'Home app', or null.
-function detectProduct(message) {
-  const lower = message.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-  const words = lower.split(' ');
-
-  // Mini must be checked before HomePod (it's a subset match)
-  if (lower.includes('homepod mini') || lower.includes('mini homepod') || lower.includes('home pod mini')) return 'HomePod mini';
-  if (/\bmini\b/.test(lower) && /\b(home|pod|apple)\b/.test(lower)) return 'HomePod mini';
-
-  // HomePod (including fuzzy)
-  if (lower.includes('homepod') || lower.includes('home pod')) return 'HomePod';
-  for (const word of words) {
-    if (word.length < 4) continue;
-    if (levenshtein(word, 'homepod') <= 2) return 'HomePod';
-  }
-
-  // Apple TV
-  if (lower.includes('apple tv') || lower.includes('appletv') || lower.includes('apple tv 4k')) return 'Apple TV 4K';
-  if (/\btv\b/.test(lower) && /\b(apple|4k|stream)\b/.test(lower)) return 'Apple TV 4K';
-
-  // Home app
-  if (lower.includes('home app') || lower.includes('apple home')) return 'Home app';
-  if (/\bhome\b/.test(lower) && /\b(app|hub|kit|screen|device)\b/.test(lower)) return 'Home app';
-
-  return null;
 }
 
 const AUTO_PROMPT = `You are a content design partner having a conversation — not writing a report. No headers. No labels. Just talk.
@@ -159,9 +131,9 @@ Each Home product has a distinct marketing register:
 - Apple TV 4K: cinematic, living room, entertainment occasion
 - Home app: control, simplicity, foundation
 
-If product is genuinely ambiguous or unrecognizable: ask "Which Home product is this for — HomePod, HomePod mini, Apple TV 4K, or the Home app?" and stop. If the user mentions a product informally, misspelled, abbreviated, or in lowercase — including "homepod", "home pod", "HomePod", "appletv", "homepd", "hompd", "hompod", "tv 4k", "mini", "the pod", "apple's speaker" — treat it as a clear product reference and do not ask for clarification. "Home pod" with a space always means HomePod. Use your best judgment and proceed. Only ask if the message contains absolutely no recognizable reference to any Apple Home product.
+If product not mentioned: ask "Which Home product is this for — HomePod, HomePod mini, Apple TV 4K, or the Home app?" and stop.
 If surface not explicitly stated as one of (product page, App Store, email, in-app): ask "Where will this copy live — product page, App Store, email, in-app, or somewhere else?" and stop. Do not infer surface from words like "callout", "headline", "copy", or "feature" — these are not surfaces.
-If product known and surface known: signal the register shift in one sentence, then give the copy options, then one brief sentence on what each prioritizes. Do not ask a follow-up question at the end. The designer will respond if they want to go further.
+If product known and surface known: signal the register shift in one sentence, then give the copy, then the brief reason.
 
 SURFACE OWNERSHIP
 
@@ -509,11 +481,7 @@ let state = {
   provider: 'anthropic', apiKey: '',
   guideContent: '', guideName: '',
   tier2Content: '', tier2Name: '',
-  messages: [], pendingImgs: [], pendingFile: null,
-  pendingProductQuestion: false,
-  pendingSurfaceQuestion: false,
-  confirmedProduct: null,
-  confirmedSurface: null
+  messages: [], pendingImgs: [], pendingFile: null, pendingSurfaceQuestion: false
 };
 
 const UNIVERSAL_CHIPS = [
@@ -717,93 +685,39 @@ async function send() {
       : 'The user has uploaded an image without context. Ask one question: what would they like you to look at or evaluate? Do not analyze yet — wait for the answer.';
     userContent.push({ type: 'text', text: '[SYSTEM NOTE: ' + contextHint + ']' });
   }
-  // ── Clarification state machine ────────────────────────────────────────
-  // All clarification happens in JavaScript. Model only receives confirmed context.
-
-  const isHomeDomain = text && typeof detectDomain === 'function' && detectDomain(text) === 'home';
-  const MARKETING_SIGNALS = ['feature callout', 'headline', 'header', 'marketing copy', 'product page', 'hero', 'tagline', 'ad copy', 'promotional', 'campaign', 'write', 'brainstorm', 'draft'];
+  // Detect marketing context and ask about surface before proceeding
+  const MARKETING_SIGNALS = ['feature callout', 'headline', 'marketing copy', 'product page', 'hero', 'tagline', 'ad copy', 'promotional', 'campaign'];
   const isMarketingRequest = text && MARKETING_SIGNALS.some(s => text.toLowerCase().includes(s));
-  const SURFACE_ANSWERS = { 'product page': 'product page', 'webpage': 'product page', 'web page': 'product page', 'app store': 'App Store', 'in-app': 'in-app', 'in app': 'in-app', 'email': 'email', 'e-mail': 'email' };
-  const PRODUCT_ANSWERS = { 'homepod mini': 'HomePod mini', 'mini': 'HomePod mini', 'homepod': 'HomePod', 'home pod': 'HomePod', 'apple tv': 'Apple TV 4K', 'apple tv 4k': 'Apple TV 4K', 'tv': 'Apple TV 4K', '4k': 'Apple TV 4K', 'home app': 'Home app', 'home': 'Home app', 'app': 'Home app' };
-
-  // If we're waiting for a product answer, parse it
-  if (state.pendingProductQuestion) {
-    const lower = text.toLowerCase().trim();
-    // Check mini first
-    if (lower.includes('mini')) { state.confirmedProduct = 'HomePod mini'; }
-    else if (lower.includes('homepod') || lower.includes('home pod') || lower.includes('pod')) { state.confirmedProduct = 'HomePod'; }
-    else if (lower.includes('tv') || lower.includes('4k') || lower.includes('apple tv')) { state.confirmedProduct = 'Apple TV 4K'; }
-    else if (lower.includes('home app') || lower.includes('app')) { state.confirmedProduct = 'Home app'; }
-    else { state.confirmedProduct = 'HomePod'; } // best guess if unrecognizable
-    state.pendingProductQuestion = false;
-  }
-
-  // If we're waiting for a surface answer, parse it
-  if (state.pendingSurfaceQuestion) {
-    const lower = text.toLowerCase().trim();
-    for (const [kw, val] of Object.entries(SURFACE_ANSWERS)) {
-      if (lower.includes(kw)) { state.confirmedSurface = val; break; }
-    }
-    if (!state.confirmedSurface) state.confirmedSurface = text.trim(); // use as-is if unrecognized
-    state.pendingSurfaceQuestion = false;
-  }
-
-  // Detect product from current message if not yet confirmed
-  if (!state.confirmedProduct && isHomeDomain && typeof detectProduct === 'function') {
-    const detected = detectProduct(text);
-    // Only auto-confirm if specific (mini or Apple TV) — HomePod alone needs to ask mini vs full
-    if (detected === 'HomePod mini' || detected === 'Apple TV 4K' || detected === 'Home app') {
-      state.confirmedProduct = detected;
-    }
-    // 'HomePod' detected — could be mini or full, need to ask
-    // null — no product detected, need to ask if marketing request
-  }
-
-  // Detect surface from current message if not yet confirmed
-  if (!state.confirmedSurface && isMarketingRequest) {
-    const lower = text.toLowerCase();
-    for (const [kw, val] of Object.entries(SURFACE_ANSWERS)) {
-      if (lower.includes(kw)) { state.confirmedSurface = val; break; }
-    }
-  }
-
-  // Ask product question if needed
-  if (isHomeDomain && isMarketingRequest && !state.confirmedProduct && !state.pendingProductQuestion) {
-    state.pendingProductQuestion = true;
-    addMessage('ai', 'Which product is this for — HomePod, HomePod mini, Apple TV 4K, or the Home app?');
-    document.getElementById('send-btn').disabled = false;
-    return;
-  }
-
-  // Ask surface question if needed (product known or not a marketing request)
-  if (isMarketingRequest && !state.confirmedSurface && !state.pendingSurfaceQuestion && !state.pendingProductQuestion) {
+  const SURFACE_KEYWORDS = ['product page', 'app store', 'in-app', 'email', 'webpage'];
+  const hasSurface = text && SURFACE_KEYWORDS.some(s => text.toLowerCase().includes(s));
+  if (isMarketingRequest && !hasSurface && !state.pendingSurfaceQuestion) {
     state.pendingSurfaceQuestion = true;
+    addMessage('user', userText);
     addMessage('ai', 'Where will this copy live — product page, App Store, email, in-app, or somewhere else?');
     document.getElementById('send-btn').disabled = false;
     return;
   }
+  state.pendingSurfaceQuestion = false;
 
-  // Build context note for model if we have confirmed context
-  const contextParts = [];
-  if (state.confirmedProduct) contextParts.push('Product: ' + state.confirmedProduct);
-  if (state.confirmedSurface) contextParts.push('Surface: ' + state.confirmedSurface);
-  if (contextParts.length) {
-    userContent.push({ type: 'text', text: '[CONTEXT: ' + contextParts.join('. ') + '. Do not ask for clarification on these — proceed directly.]' });
-  }
-  // ── End clarification state machine ──────────────────────────────────────
-
-  const msgContent = userContent.length === 1 && userContent[0].type === 'text' ? text : userContent;
-  state.messages.push({ role: 'user', content: userContent.length > 1 ? userContent : msgContent });
+  const msgContent = userContent.length === 1 && userContent[0].type === 'text' && !state.pendingImgs.length ? text : userContent;
+  state.messages.push({ role: 'user', content: msgContent });
   clearImgs();
 
   let tier2Content = state.tier2Content || '';
   let tier2Conflict = false;
 
-  if (isHomeDomain && !state.tier2Content) {
-    try {
-      const t2res = await fetch('./guides/apple-home-voice-tone.md');
-      if (t2res.ok) { state.tier2Content = await t2res.text(); state.tier2Name = 'Apple Home Voice and Tone'; tier2Content = state.tier2Content; }
-    } catch(e) {}
+  if (text && typeof detectDomain === 'function') {
+    const domain = detectDomain(text);
+    if (domain === 'home' && !state.tier2Content) {
+      try {
+        const t2res = await fetch('./guides/apple-home-voice-tone.md');
+        if (t2res.ok) { state.tier2Content = await t2res.text(); state.tier2Name = 'Apple Home Voice and Tone'; tier2Content = state.tier2Content; }
+      } catch(e) {}
+    } else if (domain === 'ambiguous' && !state.tier2Content) {
+      addMessage('ai', "Which Apple Home product is this for — HomePod, HomePod mini, Apple TV, or the Home app?");
+      document.getElementById('send-btn').disabled = false;
+      return;
+    }
   }
 
   const loadBubble = addMessage('ai', 'Thinking...');
@@ -834,10 +748,6 @@ function clearChat() {
   state.messages = [];
   state.tier2Content = '';
   state.tier2Name = '';
-  state.pendingProductQuestion = false;
-  state.pendingSurfaceQuestion = false;
-  state.confirmedProduct = null;
-  state.confirmedSurface = null;
   clearImgs();
   document.getElementById('chat-messages').innerHTML = '';
   if (state.guideContent) { addMessage('ai', 'Conversation cleared. Ask away.'); }
