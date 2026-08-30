@@ -51,7 +51,6 @@ const HOME_KEYWORDS_AMBIGUOUS = [
   'doorbell', 'lock', 'plug', 'switch', 'sensor'
 ];
 
-// Levenshtein distance for fuzzy keyword matching
 function levenshtein(a, b) {
   const m = a.length, n = b.length;
   const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
@@ -66,16 +65,13 @@ function levenshtein(a, b) {
   return dp[m][n];
 }
 
-// Fuzzy targets: single-word Home terms worth catching when misspelled.
-// Multi-word phrases are excluded — fuzzy matching individual words handles them.
-// Threshold: 1 edit for short words (≤6 chars), 2 edits for longer ones.
 const HOME_FUZZY_CLEAR = ['homekit', 'homepod', 'appletv', 'homehub', 'homepods'];
 const HOME_FUZZY_AMBIGUOUS = ['thermostat', 'doorbell'];
 
 function fuzzyMatchesDomain(lower) {
   const words = lower.split(' ');
   for (const word of words) {
-    if (word.length < 4) continue; // too short to fuzzy-match reliably
+    if (word.length < 4) continue;
     for (const target of HOME_FUZZY_CLEAR) {
       const threshold = target.length <= 6 ? 1 : 2;
       if (levenshtein(word, target) <= threshold) return 'home';
@@ -98,6 +94,27 @@ function detectDomain(message) {
     if (new RegExp('\\b' + kw + '\\b', 'i').test(message)) return 'ambiguous';
   }
   return fuzzyMatchesDomain(lower);
+}
+
+function detectHomePod(message) {
+  const lower = message.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const hasMini = /\bmini\b/.test(lower);
+  if (lower.includes('homepod mini') || lower.includes('mini homepod') ||
+      lower.includes('home pod mini') || lower.includes('mini home pod')) {
+    return { model: 'mini', match: 'exact' };
+  }
+  if (lower.includes('homepod') || lower.includes('home pod')) {
+    return { model: 'unspecified', match: 'exact' };
+  }
+  const words = lower.split(' ');
+  for (const word of words) {
+    if (word.length < 4) continue;
+    const dist = levenshtein(word, 'homepod');
+    if (dist === 0) continue;
+    if (dist === 1) return { model: hasMini ? 'mini' : 'unspecified', match: 'exact' };
+    if (dist === 2) return { model: hasMini ? 'mini' : 'unspecified', match: 'typo' };
+  }
+  return null;
 }
 
 const AUTO_PROMPT = `You are a content design partner having a conversation — not writing a report. No headers. No labels. Just talk.
@@ -130,7 +147,7 @@ Each Home product has a distinct marketing register:
 - Apple TV 4K: cinematic, living room, entertainment occasion
 - Home app: control, simplicity, foundation
 
-If product not mentioned: ask "Which Home product is this for — HomePod, HomePod mini, Apple TV 4K, or the Home app?" and stop.
+If product not mentioned at all: ask "Which Home product is this for — HomePod, HomePod mini, Apple TV 4K, or the Home app?" and stop.
 If surface not explicitly stated as one of (product page, App Store, email, in-app): ask "Where will this copy live — product page, App Store, email, in-app, or somewhere else?" and stop. Do not infer surface from words like "callout", "headline", "copy", or "feature" — these are not surfaces.
 If product known and surface known: signal the register shift in one sentence, then give the copy, then the brief reason.
 
@@ -480,7 +497,8 @@ let state = {
   provider: 'anthropic', apiKey: '',
   guideContent: '', guideName: '',
   tier2Content: '', tier2Name: '',
-  messages: [], pendingImgs: [], pendingFile: null, pendingSurfaceQuestion: false
+  messages: [], pendingImgs: [], pendingFile: null,
+  pendingSurfaceQuestion: false, pendingHomePodQuestion: false
 };
 
 const UNIVERSAL_CHIPS = [
@@ -502,6 +520,10 @@ function renderChips() {
 
 function useChip(el) {
   const box = document.getElementById('input-box');
+  if (el.textContent === 'Check screenshots for errors') {
+    document.getElementById('img-input').click();
+    return;
+  }
   box.value = el.textContent;
   autoResize(box);
   box.focus();
@@ -565,11 +587,9 @@ function addMessage(role, text, imgB64, imgMime, imgCount, imgAllSrcs) {
   const bubble = document.createElement('div');
   bubble.className = 'bubble ' + role;
   bubble.innerHTML = renderMarkdown(text);
-  // Show all uploaded images as a flex grid
   if (imgB64) {
     const grid = document.createElement('div');
     grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;';
-    // imgB64 is the first image; allImgs carries the full set when available
     const srcs = (imgAllSrcs && imgAllSrcs.length) ? imgAllSrcs : [{ b64: imgB64, mime: imgMime || 'image/jpeg' }];
     srcs.forEach((src, i) => {
       const img = document.createElement('img');
@@ -619,7 +639,6 @@ function handleImg(e) {
     };
     reader.readAsDataURL(f);
   });
-  // Reset input so same files can be re-selected if needed
   document.getElementById('img-input').value = '';
 }
 
@@ -641,7 +660,6 @@ function renderThumbnails() {
     wrap.appendChild(rm);
     container.appendChild(wrap);
   });
-  // Disable attach button at 5 images
   if (state.pendingImgs.length >= 5) { btn.classList.add('disabled'); }
   else { btn.classList.remove('disabled'); }
 }
@@ -671,27 +689,48 @@ async function send() {
     });
   }
   if (text) userContent.push({ type: 'text', text });
-  // If no text and images uploaded, inject context-request instruction
   if (state.pendingImgs.length > 0 && !text) {
     const contextHint = state.pendingImgs.length > 1
       ? 'The user has uploaded ' + state.pendingImgs.length + ' images without context. Ask them: are these a flow (sequential screens) or a comparison? If a flow, ask if the upload order reflects the order they appear. Do not analyze the images yet — wait for the answer.'
       : 'The user has uploaded an image without context. Ask one question: what would they like you to look at or evaluate? Do not analyze yet — wait for the answer.';
     userContent.push({ type: 'text', text: '[SYSTEM NOTE: ' + contextHint + ']' });
   }
-  // Detect marketing context and ask about surface before proceeding
+
+  const msgContent = userContent.length === 1 && userContent[0].type === 'text' && !state.pendingImgs.length ? text : userContent;
+
+  // JS-enforced HomePod detection
+  if (text && !state.pendingHomePodQuestion) {
+    const hp = detectHomePod(text);
+    if (hp && (hp.match === 'typo' || hp.model === 'unspecified')) {
+      state.pendingHomePodQuestion = true;
+      state.messages.push({ role: 'user', content: msgContent });
+      clearImgs();
+      if (hp.match === 'typo') {
+        addMessage('ai', 'Did you mean HomePod or HomePod mini?');
+      } else {
+        addMessage('ai', 'Which HomePod is this for — HomePod or HomePod mini?');
+      }
+      document.getElementById('send-btn').disabled = false;
+      return;
+    }
+  }
+  state.pendingHomePodQuestion = false;
+
+  // JS-enforced surface check
   const MARKETING_SIGNALS = ['feature callout', 'headline', 'marketing copy', 'product page', 'hero', 'tagline', 'ad copy', 'promotional', 'campaign'];
   const isMarketingRequest = text && MARKETING_SIGNALS.some(s => text.toLowerCase().includes(s));
   const SURFACE_KEYWORDS = ['product page', 'app store', 'in-app', 'email', 'webpage'];
   const hasSurface = text && SURFACE_KEYWORDS.some(s => text.toLowerCase().includes(s));
   if (isMarketingRequest && !hasSurface && !state.pendingSurfaceQuestion) {
     state.pendingSurfaceQuestion = true;
+    state.messages.push({ role: 'user', content: msgContent });
+    clearImgs();
     addMessage('ai', 'Where will this copy live — product page, App Store, email, in-app, or somewhere else?');
     document.getElementById('send-btn').disabled = false;
     return;
   }
   state.pendingSurfaceQuestion = false;
 
-  const msgContent = userContent.length === 1 && userContent[0].type === 'text' && !state.pendingImgs.length ? text : userContent;
   state.messages.push({ role: 'user', content: msgContent });
   clearImgs();
 
@@ -726,7 +765,6 @@ async function send() {
     loadBubble.classList.remove('loading');
     loadBubble.innerHTML = renderMarkdown(reply);
   } catch(err) {
-    // Remove the failed user message so conversation can recover
     state.messages.pop();
     loadBubble.classList.remove('loading');
     loadBubble.innerHTML = '<span style="color:var(--danger)">Error: ' + (err.message || 'Something went wrong. Check your API key and try again.') + '</span>';
@@ -740,6 +778,8 @@ function clearChat() {
   state.messages = [];
   state.tier2Content = '';
   state.tier2Name = '';
+  state.pendingHomePodQuestion = false;
+  state.pendingSurfaceQuestion = false;
   clearImgs();
   document.getElementById('chat-messages').innerHTML = '';
   if (state.guideContent) { addMessage('ai', 'Conversation cleared. Ask away.'); }
