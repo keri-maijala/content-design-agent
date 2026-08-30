@@ -509,7 +509,11 @@ let state = {
   provider: 'anthropic', apiKey: '',
   guideContent: '', guideName: '',
   tier2Content: '', tier2Name: '',
-  messages: [], pendingImgs: [], pendingFile: null, pendingSurfaceQuestion: false
+  messages: [], pendingImgs: [], pendingFile: null,
+  pendingProductQuestion: false,
+  pendingSurfaceQuestion: false,
+  confirmedProduct: null,
+  confirmedSurface: null
 };
 
 const UNIVERSAL_CHIPS = [
@@ -713,57 +717,93 @@ async function send() {
       : 'The user has uploaded an image without context. Ask one question: what would they like you to look at or evaluate? Do not analyze yet — wait for the answer.';
     userContent.push({ type: 'text', text: '[SYSTEM NOTE: ' + contextHint + ']' });
   }
-  // Detect marketing context and ask about surface before proceeding
-  const MARKETING_SIGNALS = ['feature callout', 'headline', 'marketing copy', 'product page', 'hero', 'tagline', 'ad copy', 'promotional', 'campaign'];
+  // ── Clarification state machine ────────────────────────────────────────
+  // All clarification happens in JavaScript. Model only receives confirmed context.
+
+  const isHomeDomain = text && typeof detectDomain === 'function' && detectDomain(text) === 'home';
+  const MARKETING_SIGNALS = ['feature callout', 'headline', 'header', 'marketing copy', 'product page', 'hero', 'tagline', 'ad copy', 'promotional', 'campaign', 'write', 'brainstorm', 'draft'];
   const isMarketingRequest = text && MARKETING_SIGNALS.some(s => text.toLowerCase().includes(s));
-  const SURFACE_KEYWORDS = ['product page', 'app store', 'in-app', 'email', 'webpage'];
-  const hasSurface = text && SURFACE_KEYWORDS.some(s => text.toLowerCase().includes(s));
-  // Mark surface as established if user answers with a surface keyword
-  if (hasSurface) state.surfaceEstablished = true;
-  if (isMarketingRequest && !hasSurface && !state.pendingSurfaceQuestion && !state.surfaceEstablished) {
+  const SURFACE_ANSWERS = { 'product page': 'product page', 'webpage': 'product page', 'web page': 'product page', 'app store': 'App Store', 'in-app': 'in-app', 'in app': 'in-app', 'email': 'email', 'e-mail': 'email' };
+  const PRODUCT_ANSWERS = { 'homepod mini': 'HomePod mini', 'mini': 'HomePod mini', 'homepod': 'HomePod', 'home pod': 'HomePod', 'apple tv': 'Apple TV 4K', 'apple tv 4k': 'Apple TV 4K', 'tv': 'Apple TV 4K', '4k': 'Apple TV 4K', 'home app': 'Home app', 'home': 'Home app', 'app': 'Home app' };
+
+  // If we're waiting for a product answer, parse it
+  if (state.pendingProductQuestion) {
+    const lower = text.toLowerCase().trim();
+    // Check mini first
+    if (lower.includes('mini')) { state.confirmedProduct = 'HomePod mini'; }
+    else if (lower.includes('homepod') || lower.includes('home pod') || lower.includes('pod')) { state.confirmedProduct = 'HomePod'; }
+    else if (lower.includes('tv') || lower.includes('4k') || lower.includes('apple tv')) { state.confirmedProduct = 'Apple TV 4K'; }
+    else if (lower.includes('home app') || lower.includes('app')) { state.confirmedProduct = 'Home app'; }
+    else { state.confirmedProduct = 'HomePod'; } // best guess if unrecognizable
+    state.pendingProductQuestion = false;
+  }
+
+  // If we're waiting for a surface answer, parse it
+  if (state.pendingSurfaceQuestion) {
+    const lower = text.toLowerCase().trim();
+    for (const [kw, val] of Object.entries(SURFACE_ANSWERS)) {
+      if (lower.includes(kw)) { state.confirmedSurface = val; break; }
+    }
+    if (!state.confirmedSurface) state.confirmedSurface = text.trim(); // use as-is if unrecognized
+    state.pendingSurfaceQuestion = false;
+  }
+
+  // Detect product from current message if not yet confirmed
+  if (!state.confirmedProduct && isHomeDomain && typeof detectProduct === 'function') {
+    const detected = detectProduct(text);
+    // Only auto-confirm if specific (mini or Apple TV) — HomePod alone needs to ask mini vs full
+    if (detected === 'HomePod mini' || detected === 'Apple TV 4K' || detected === 'Home app') {
+      state.confirmedProduct = detected;
+    }
+    // 'HomePod' detected — could be mini or full, need to ask
+    // null — no product detected, need to ask if marketing request
+  }
+
+  // Detect surface from current message if not yet confirmed
+  if (!state.confirmedSurface && isMarketingRequest) {
+    const lower = text.toLowerCase();
+    for (const [kw, val] of Object.entries(SURFACE_ANSWERS)) {
+      if (lower.includes(kw)) { state.confirmedSurface = val; break; }
+    }
+  }
+
+  // Ask product question if needed
+  if (isHomeDomain && isMarketingRequest && !state.confirmedProduct && !state.pendingProductQuestion) {
+    state.pendingProductQuestion = true;
+    addMessage('ai', 'Which product is this for — HomePod, HomePod mini, Apple TV 4K, or the Home app?');
+    document.getElementById('send-btn').disabled = false;
+    return;
+  }
+
+  // Ask surface question if needed (product known or not a marketing request)
+  if (isMarketingRequest && !state.confirmedSurface && !state.pendingSurfaceQuestion && !state.pendingProductQuestion) {
     state.pendingSurfaceQuestion = true;
     addMessage('ai', 'Where will this copy live — product page, App Store, email, in-app, or somewhere else?');
     document.getElementById('send-btn').disabled = false;
     return;
   }
-  state.pendingSurfaceQuestion = false;
 
-  const msgContent = userContent.length === 1 && userContent[0].type === 'text' && !state.pendingImgs.length ? text : userContent;
-
-  // Detect product early and inject as system note before pushing to messages
-  if (text && typeof detectDomain === 'function') {
-    const domain = detectDomain(text);
-    if (domain === 'home' && typeof detectProduct === 'function') {
-      const product = detectProduct(text);
-      if (product) {
-        const note = '[SYSTEM NOTE: The user is referring to ' + product + '. This is a confirmed product reference — do not ask which product they mean.]';
-        if (Array.isArray(msgContent)) {
-          msgContent.push({ type: 'text', text: note });
-        } else {
-          userContent.push({ type: 'text', text: note });
-        }
-      }
-    }
+  // Build context note for model if we have confirmed context
+  const contextParts = [];
+  if (state.confirmedProduct) contextParts.push('Product: ' + state.confirmedProduct);
+  if (state.confirmedSurface) contextParts.push('Surface: ' + state.confirmedSurface);
+  if (contextParts.length) {
+    userContent.push({ type: 'text', text: '[CONTEXT: ' + contextParts.join('. ') + '. Do not ask for clarification on these — proceed directly.]' });
   }
+  // ── End clarification state machine ──────────────────────────────────────
 
-  state.messages.push({ role: 'user', content: Array.isArray(msgContent) ? msgContent : userContent.length > 1 ? userContent : msgContent });
+  const msgContent = userContent.length === 1 && userContent[0].type === 'text' ? text : userContent;
+  state.messages.push({ role: 'user', content: userContent.length > 1 ? userContent : msgContent });
   clearImgs();
 
   let tier2Content = state.tier2Content || '';
   let tier2Conflict = false;
 
-  if (text && typeof detectDomain === 'function') {
-    const domain = detectDomain(text);
-    if (domain === 'home' && !state.tier2Content) {
-      try {
-        const t2res = await fetch('./guides/apple-home-voice-tone.md');
-        if (t2res.ok) { state.tier2Content = await t2res.text(); state.tier2Name = 'Apple Home Voice and Tone'; tier2Content = state.tier2Content; }
-      } catch(e) {}
-    } else if (domain === 'ambiguous' && !state.tier2Content) {
-      addMessage('ai', "Which Apple Home product is this for — HomePod, HomePod mini, Apple TV, or the Home app?");
-      document.getElementById('send-btn').disabled = false;
-      return;
-    }
+  if (isHomeDomain && !state.tier2Content) {
+    try {
+      const t2res = await fetch('./guides/apple-home-voice-tone.md');
+      if (t2res.ok) { state.tier2Content = await t2res.text(); state.tier2Name = 'Apple Home Voice and Tone'; tier2Content = state.tier2Content; }
+    } catch(e) {}
   }
 
   const loadBubble = addMessage('ai', 'Thinking...');
@@ -794,8 +834,10 @@ function clearChat() {
   state.messages = [];
   state.tier2Content = '';
   state.tier2Name = '';
-  state.surfaceEstablished = false;
+  state.pendingProductQuestion = false;
   state.pendingSurfaceQuestion = false;
+  state.confirmedProduct = null;
+  state.confirmedSurface = null;
   clearImgs();
   document.getElementById('chat-messages').innerHTML = '';
   if (state.guideContent) { addMessage('ai', 'Conversation cleared. Ask away.'); }
